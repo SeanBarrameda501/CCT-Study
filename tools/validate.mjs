@@ -47,13 +47,15 @@ for (const q of Q) {
 // ---- proportions ----
 const TARGET = { A: 10, B: 14, C: 22, D: 10, E: 4, F: 40 };
 const pct = (arr, key = 'area') => { const c = {}; arr.forEach(x => (c[x[key]] = (c[x[key]] || 0) + 1)); return Object.fromEntries(Object.keys(TARGET).map(k => [k, (100 * (c[k] || 0)) / arr.length])); };
-const qp = pct(Q); for (const k in TARGET) if (Math.abs(qp[k] - TARGET[k]) > 1) err(`questions: area ${k} is ${qp[k].toFixed(1)}% (target ${TARGET[k]}%)`);
-const FC = data['data/flashcards.json'].cards; const fp = pct(FC); for (const k in TARGET) if (Math.abs(fp[k] - TARGET[k]) > 1) err(`flashcards: area ${k} is ${fp[k].toFixed(1)}% (target ${TARGET[k]}%)`);
+const isBonus = x => x.tags?.includes('anatomy-bonus');
+const Qcore = Q.filter(q => !isBonus(q));
+const qp = pct(Qcore); for (const k in TARGET) if (Math.abs(qp[k] - TARGET[k]) > 1) err(`questions: area ${k} is ${qp[k].toFixed(1)}% (target ${TARGET[k]}%)`);
+const FC = data['data/flashcards.json'].cards; const FCcore = FC.filter(c => !isBonus(c)); const fp = pct(FCcore); for (const k in TARGET) if (Math.abs(fp[k] - TARGET[k]) > 1) err(`flashcards: area ${k} is ${fp[k].toFixed(1)}% (target ${TARGET[k]}%)`);
 const MED_CAP = 40 / 11; // CCI lists meds as 1 of 11 tasks in the 40% domain
 const medQ = Q.filter(q => q.tags?.includes('medication')).length, medF = FC.filter(c => c.tags?.includes('medication')).length;
 const G = data['data/glossary.json'].terms, MR = data['data/medications.json'].classes;
-if ((100 * medQ) / Q.length > MED_CAP) err(`medication questions ${((100 * medQ) / Q.length).toFixed(1)}% > ${MED_CAP.toFixed(1)}%`);
-if ((100 * medF) / FC.length > MED_CAP) err(`medication flashcards ${((100 * medF) / FC.length).toFixed(1)}% > cap`);
+if ((100 * medQ) / Qcore.length > MED_CAP) err(`medication questions ${((100 * medQ) / Qcore.length).toFixed(1)}% > ${MED_CAP.toFixed(1)}%`);
+if ((100 * medF) / FCcore.length > MED_CAP) err(`medication flashcards ${((100 * medF) / FC.length).toFixed(1)}% > cap`);
 if ((100 * MR.length) / (MR.length + G.length) > MED_CAP) err(`medication quick-reference ${((100 * MR.length) / (MR.length + G.length)).toFixed(1)}% > cap`);
 if (Q.length < 1000) err(`only ${Q.length} questions (target ≥ 1000)`);
 if (FC.length < 500) err(`only ${FC.length} flashcards (target ≥ 500)`);
@@ -81,7 +83,10 @@ for (const q of Q.filter(q => q.type === 'mcq')) {
 const pos = [0, 0, 0, 0]; Q.filter(q => q.type === 'mcq').forEach(q => pos[q.answer]++);
 const exp = pos.reduce((a, b) => a + b) / 4; if (pos.some(p => Math.abs(p - exp) > exp * 0.15)) warn(`answer position imbalance ${pos}`);
 
-console.log(`questions ${Q.length} | ${Object.entries(qp).map(([k, v]) => `${k} ${v.toFixed(1)}%`).join(' ')} | meds ${medQ} (${((100 * medQ) / Q.length).toFixed(1)}%)`);
+const anatQ = Q.filter(q => q.tags?.includes('anatomy') || q.subtopic === 'Anatomy & physiology').length, anatF = FC.filter(c => c.tags?.includes('anatomy')).length;
+console.log(`anatomy/physiology/blood flow: ${anatQ} questions (${(100 * anatQ / Q.length).toFixed(1)}% of all; ${Q.filter(isBonus).length} are bonus items outside the CCI proportions), ${anatF} flashcards`);
+console.log(`traps: ${Q.filter(q => q.tags?.includes('trap')).length} questions; communication: ${Q.filter(q => q.tags?.includes('communication')).length} questions`);
+console.log(`core questions ${Qcore.length} of ${Q.length} | ${Object.entries(qp).map(([k, v]) => `${k} ${v.toFixed(1)}%`).join(' ')} | meds ${medQ} (${((100 * medQ) / Q.length).toFixed(1)}%)`);
 console.log(`flashcards ${FC.length} | ${Object.entries(fp).map(([k, v]) => `${k} ${v.toFixed(1)}%`).join(' ')} | meds ${medF}`);
 console.log(`types`, Q.reduce((a, q) => ((a[q.type] = (a[q.type] || 0) + 1), a), {}), 'answer positions', pos, `images ${S.length}`);
 if (warns.length) console.log(`\n${warns.length} warnings:\n  ` + warns.filter(w => !process.env.ONLY || w.includes(process.env.ONLY)).filter(w=>!process.env.SKIP || !w.includes(process.env.SKIP)).slice(0, 200).join('\n  ') + (warns.length > 60 ? `\n  …${warns.length - 60} more` : ''));

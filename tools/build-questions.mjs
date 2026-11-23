@@ -12,6 +12,9 @@ import E from './content/e-ambulatory.mjs';
 import F from './content/f-rhythm.mjs';
 import EXTRA from './content/extra.mjs';
 import EXPLAIN from './content/explain-extra.mjs';
+import ANAT from './content/anatomy.mjs';
+import COMM from './content/communication.mjs';
+import TRAPS from './content/traps-q.mjs';
 
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
 const strips = JSON.parse(fs.readFileSync(path.join(ROOT, 'data/strips.json'), 'utf8')).images;
@@ -393,7 +396,7 @@ for (const [qt, rr] of [[0.36, 0.64], [0.40, 1.0], [0.44, 0.81], [0.32, 0.49], [
 }
 
 // ---------------- Assemble, shuffle options, IDs ----------------
-const hand = [...A, ...B, ...C, ...D, ...E, ...F, ...EXTRA];
+const hand = [...A, ...B, ...C, ...D, ...E, ...F, ...EXTRA, ...COMM, ...TRAPS, ...ANAT];
 for (const q of hand) for (const [k, v] of Object.entries(EXPLAIN)) if (q.stem.startsWith(k)) { q.explanation += ' ' + v; break; }
 // Attach a reference strip to hand-written rhythm, interval and artifact questions whose STEM names the finding.
 const REF = [[/first-degree|PR interval of 0\.28/i, 'avb1'], [/Mobitz II/i, 'mobitz2'], [/Wenckebach|Mobitz I\b/i, 'mobitz1'], [/torsades/i, 'torsades'], [/asystole/i, 'asystole'],
