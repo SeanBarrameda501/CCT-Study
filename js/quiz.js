@@ -102,12 +102,22 @@ export function runSession(root, cfg) {
   function tick() {
     const left = cfg.timeLimit * 60 - Math.floor((Date.now() - st.start) / 1000); const t = $('.timer', root);
     if (t) { t.textContent = fmt(left); t.classList.toggle('warn', left < 600); }
+    if (cfg.pace) pacing();
     if (left <= 0) { clearInterval(timerId); toast('Time is up — submitting your exam.'); finish(); }
+  }
+  // Pacing trainer: compares elapsed time with the target pace (seconds per question)
+  function pacing() {
+    const el = $('.pace', root); if (!el) return;
+    const elapsed = (Date.now() - st.start) / 1000, answered = items.length - unanswered().length;
+    const behind = elapsed - Math.max(answered, st.i) * cfg.pace, onQ = Math.floor((Date.now() - st.qStart) / 1000);
+    const slow = onQ > cfg.pace * 2;
+    el.className = 'pace ' + (behind > 120 ? 'bad' : behind > 45 ? 'warn' : 'ok');
+    el.innerHTML = `${behind > 45 ? `⚠ Behind by ${Math.max(1, Math.round(behind / 60))} min` : '✓ On pace'} · this question ${onQ} s${slow ? ' — <b>flag it and move on</b>' : ''}`;
   }
   const fmt = s => `${Math.floor(Math.max(0, s) / 60)}:${String(Math.max(0, s) % 60).padStart(2, '0')}`;
   function show() {
     const q = items[st.i]; st.qStart = Date.now();
-    root.innerHTML = `<div class="progress-top"><b>${esc(cfg.title)}</b><span class="muted">${st.i + 1}/${items.length}</span>${bar((st.i) / items.length)}${cfg.timeLimit ? `<span class="timer">--:--</span>` : ''}</div>`;
+    root.innerHTML = `<div class="progress-top"><b>${esc(cfg.title)}</b><span class="muted">${st.i + 1}/${items.length}</span>${bar((st.i) / items.length)}${cfg.timeLimit ? `<span class="timer">--:--</span>` : ''}${cfg.pace ? `<div class="pace ok">Target ${Math.round(cfg.pace)} s per question</div>` : ''}</div>`;
     if (cfg.timeLimit) tick();
     const card = renderQuestion(q, {
       mode, confidence: conf, initial: st.resp[q.id], orderDisp: st.order?.[q.id],
@@ -142,11 +152,28 @@ export function runSession(root, cfg) {
     if (a === 'next' || a === 'skip') { if (st.i < items.length - 1) { st.i++; show(); } else finish(); }
     if (a === 'prev' && st.i) { st.i--; show(); }
     if (a === 'flag') { st.flags.has(q.id) ? st.flags.delete(q.id) : st.flags.add(q.id); nav(); }
+    if (a === 'quit' && mode !== 'exam' && !Object.keys(st.done).length) { location.hash = cfg.back || '#/'; return; }
     if (a === 'finish' || a === 'quit') {
-      if (mode === 'exam') { const left = items.filter(x => st.resp[x.id] == null || (Array.isArray(st.resp[x.id]) && !st.resp[x.id].length)).length; if (left && !confirm(`${left} unanswered. Finish anyway?`)) return; }
+      if (mode === 'exam' && !st.reviewed && (st.flags.size || unanswered().length)) return endReview();
+      if (mode === 'exam') { const left = unanswered().length; if (left && !confirm(`${left} unanswered. Finish anyway?`)) return; }
       finish();
     }
     if (a === 'grid') grid();
+  }
+  function unanswered() { return items.filter(x => st.resp[x.id] == null || (Array.isArray(st.resp[x.id]) && !st.resp[x.id].length)); }
+  // Like the real test: before submitting, review flagged and unanswered items.
+  function endReview() {
+    const un = unanswered();
+    const fl = items.map((x, i) => [x, i]).filter(([x]) => st.flags.has(x.id)), ul = items.map((x, i) => [x, i]).filter(([x]) => un.includes(x));
+    const chip = ([x, i]) => `<button class="btn small ${st.flags.has(x.id) ? 'primary' : ''}" data-j="${i}">${i + 1}${st.flags.has(x.id) ? '⚑' : ''}</button>`;
+    root.innerHTML = `<div class="card"><h2>Review before you submit</h2><p class="muted">Time left: <b class="timer">--:--</b>. There is no penalty for changing answers, and a blank answer is always wrong, so answer every question.</p>
+      <h3>⚑ Flagged (${fl.length})</h3><div class="pill-list">${fl.map(chip).join('') || '<span class="muted">None</span>'}</div>
+      <h3>Unanswered (${ul.length})</h3><div class="pill-list">${ul.map(chip).join('') || '<span class="muted">None</span>'}</div>
+      <div class="btn-row"><button class="btn" data-x="grid">All questions</button><button class="btn primary" data-x="submit">Submit exam</button></div></div>`;
+    if (cfg.timeLimit) tick();
+    $$('[data-j]', root).forEach(b => b.onclick = () => { st.i = +b.dataset.j; show(); });
+    $('[data-x="grid"]', root).onclick = grid;
+    $('[data-x="submit"]', root).onclick = () => { st.reviewed = true; act('finish'); };
   }
   function grid() {
     root.innerHTML = `<div class="card"><h2>Question list</h2><p class="muted">Tap a number to jump. ⚑ = flagged, ● = answered.</p><div class="pill-list">${items.map((x, i) => `<button class="btn small ${st.flags.has(x.id) ? 'primary' : ''}" data-j="${i}">${i + 1}${st.resp[x.id] != null && !(Array.isArray(st.resp[x.id]) && !st.resp[x.id].length) ? '●' : ''}${st.flags.has(x.id) ? '⚑' : ''}</button>`).join('')}</div><div class="btn-row"><button class="btn primary" data-j="${st.i}">Back to question</button></div></div>`;
@@ -162,10 +189,13 @@ export function runSession(root, cfg) {
     const pctScore = scored.length ? correct / scored.length : 0;
     if (mode === 'exam') S.addExam({ date: Date.now(), total: items.length, scored: scored.length, correct, pct: pctScore, byArea, minutes: Math.round((Date.now() - st.start) / 60000) });
     const missed = scored.filter(q => !grade(q, st.resp[q.id]));
+    const mins = (Date.now() - st.start) / 60000, perQ = (mins * 60) / Math.max(1, answered.length);
+    if (cfg.onFinish) try { cfg.onFinish({ answered: answered.length, scored: scored.length, correct, pct: pctScore, items }); } catch (e) { console.warn(e); }
     root.innerHTML = `<div class="card"><h2>${esc(cfg.title)} — results</h2>
       <div class="stats"><div class="stat"><b>${correct}/${scored.length}</b><small>correct${mode === 'exam' ? ' (scored items)' : ''}</small></div><div class="stat"><b>${pct(pctScore)}</b><small>score</small></div>
       ${mode === 'exam' ? `<div class="stat"><b style="color:var(--${pctScore >= S.PASS_PCT ? 'ok' : 'bad'})">${pctScore >= S.PASS_PCT ? 'Likely PASS' : 'Not yet'}</b><small>estimate (≥ ${Math.round(S.PASS_PCT * 100)}%)</small></div>` : ''}</div>
       ${mode === 'exam' ? `<p class="notice">CCI reports a scaled score (650 of 900 to pass), which is not the same as percent correct. This pass/fail line is only an estimate based on ${Math.round(S.PASS_PCT * 100)}% correct. 20 of the 130 questions were treated as unscored pretest items, as on the real exam.</p>` : ''}
+      ${cfg.pace ? `<p class="notice">⏲️ Pacing: ${Math.round(mins)} min for ${answered.length} answered (${Math.round(perQ)} s per question; target ${Math.round(cfg.pace)} s). ${perQ > cfg.pace * 1.1 ? 'Slower than the real exam pace. Flag hard items and move on sooner.' : 'Good pace for the real exam.'}</p>` : ''}
       <h3>By content area</h3><table class="simple"><tr><th>Area</th><th>Score</th><th style="width:35%"></th></tr>${Object.keys(AREAS).filter(a => byArea[a]).map(a => `<tr><td>${esc(AREAS[a])}${mode === 'exam' ? ` <small class="muted">(${AREA_PCT[a]}%)</small>` : ''}</td><td>${byArea[a][0]}/${byArea[a][1]}</td><td>${bar(byArea[a][0] / byArea[a][1], byArea[a][0] / byArea[a][1] >= 0.7 ? 'ok' : 'bad')}</td></tr>`).join('')}</table>
       <div class="btn-row">${missed.length ? '<button class="btn primary" data-r="missed">Retry missed</button><button class="btn" data-r="review">Review answers</button>' : ''}<a class="btn" href="#/">Home</a></div></div>`;
     const rm = $('[data-r="missed"]', root); if (rm) rm.onclick = () => runSession(root, { title: 'Retry missed', items: shuffle(missed), mode: 'practice' });
@@ -182,7 +212,7 @@ function reviewList(root, items, st) {
 }
 
 // ---------- Rapid fire: 60-second rounds mixing quick MCQs and flashcards ----------
-export function runRapid(root) {
+export function runRapid(root, opts = {}) {
   const quick = D.questions.filter(q => q.type === 'mcq' && !q.image && q.stem.length < 140 && q.options.every(o => o.length < 70));
   const cards = D.cards.filter(c => !c.image && c.back.length < 70);
   const makeCardQ = c => { const pool = cards.filter(x => x.area === c.area && x.back !== c.back); const wrong = shuffle(pool).slice(0, 3).map(x => x.back); const opts = shuffle([c.back, ...wrong]);
@@ -204,7 +234,7 @@ export function runRapid(root) {
     } });
     root.append(card);
   }
-  function stop() { if (!timer) return; clearInterval(timer); timer = null; S.addRapid(score);
+  function stop() { if (!timer) return; clearInterval(timer); timer = null; S.addRapid(score); if (opts.onEnd) opts.onEnd(score);
     root.innerHTML = `<div class="card center"><h2>Time! ⚡</h2><div class="big-num">${score}</div><p>correct in 60 seconds (${n} seen)</p><p class="muted">Best: ${S.profile().rapid[0]?.score}</p><div class="btn-row stretch"><button class="btn primary again">Play again</button><a class="btn" href="#/">Home</a></div></div>`;
     $('.again', root).onclick = start; }
   return () => clearInterval(timer);

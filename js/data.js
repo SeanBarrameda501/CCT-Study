@@ -12,9 +12,9 @@ export const AREA_ICON = { A: '🩺', B: '📈', C: '🫀', D: '🏃', E: '⌚',
 
 export async function loadData() {
   const get = f => fetch(f).then(r => { if (!r.ok) throw new Error(f + ' ' + r.status); return r.json(); });
-  const [q, s, l, c, g, m] = await Promise.all(['data/questions.json', 'data/strips.json', 'data/lessons.json', 'data/flashcards.json', 'data/glossary.json', 'data/medications.json'].map(get));
+  const [q, s, l, c, g, m, t] = await Promise.all(['data/questions.json', 'data/strips.json', 'data/lessons.json', 'data/flashcards.json', 'data/glossary.json', 'data/medications.json', 'data/traps.json'].map(get));
   D.questions = q.questions; D.qmap = Object.fromEntries(q.questions.map(x => [x.id, x]));
   D.strips = Object.fromEntries(s.images.map(x => [x.id, x]));
   D.lessonList = l.lessons; D.lessons = Object.fromEntries(l.lessons.map(x => [x.id, x]));
-  D.cards = c.cards; D.glossary = g.terms; D.meds = m.classes; D.medNote = m.note; D.ready = true;
+  D.cards = c.cards; D.glossary = g.terms; D.meds = m.classes; D.medNote = m.note; D.traps = t.areas; D.ready = true;
 }

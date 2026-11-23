@@ -12,6 +12,12 @@ import E from './content/e-ambulatory.mjs';
 import F from './content/f-rhythm.mjs';
 import EXTRA from './content/extra.mjs';
 import EXPLAIN from './content/explain-extra.mjs';
+import ANAT from './content/anatomy.mjs';
+import COMM from './content/communication.mjs';
+import TRAPS from './content/traps-q.mjs';
+import FIXES1 from './content/distractor-fixes.mjs';
+import FIXES2 from './content/distractor-fixes-2.mjs';
+const FIXES = [...FIXES2, ...FIXES1];
 
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
 const strips = JSON.parse(fs.readFileSync(path.join(ROOT, 'data/strips.json'), 'utf8')).images;
@@ -223,11 +229,11 @@ function hotspotQuestion(s) {
     explanation: `${expl} Rhythm: ${NAME(s.rhythm)} (${describe(s)}).`, source: SRC.DUBIN });
 }
 const ACTIONS = {
-  vfib: ['Call for help, begin CPR and defibrillate as soon as a defibrillator is available', ['Give adenosine', 'Perform synchronized cardioversion', 'Record a 12-lead ECG before doing anything else']],
-  vfibfine: ['Begin CPR and defibrillate as soon as possible, confirming the rhythm in another lead', ['Treat as asystole and never shock', 'Give atropine first', 'Wait 5 minutes to see if it resolves']],
-  vtach: ['Begin CPR and defibrillate (pulseless VT is treated like VF)', ['Give adenosine and observe', 'Perform carotid massage', 'Recheck in 10 minutes']],
-  torsades: ['Begin CPR and defibrillate (unsynchronized); magnesium is given per ACLS', ['Perform synchronized cardioversion at low energy only', 'Give adenosine', 'Tell the patient to cough']],
-  asystole: ['Begin CPR and give epinephrine per ACLS; asystole is not a shockable rhythm', ['Defibrillate immediately at maximum energy', 'Give adenosine', 'Perform synchronized cardioversion']],
+  vfib: ['Call for help, begin CPR and defibrillate as soon as a defibrillator is available', ['Give adenosine 6 mg rapid IV push and observe the monitor for conversion', 'Perform synchronized cardioversion after sedating the patient', 'Record a full 12-lead ECG before starting any resuscitation']],
+  vfibfine: ['Begin CPR and defibrillate as soon as possible, confirming the rhythm in another lead', ['Treat it as asystole: give epinephrine only and never deliver a shock', 'Give atropine 1 mg first, then reassess the rhythm before CPR', 'Wait 5 minutes to see whether the rhythm resolves on its own']],
+  vtach: ['Begin CPR and defibrillate (pulseless VT is treated like VF)', ['Give adenosine and observe, since VT may respond like SVT', 'Perform carotid sinus massage to slow the ventricular rate', 'Recheck the pulse and rhythm again in 10 minutes']],
+  torsades: ['Begin CPR and defibrillate (unsynchronized); magnesium is given per ACLS', ['Perform synchronized cardioversion at low energy only, without CPR', 'Give adenosine rapidly, then defibrillate if the rhythm persists', 'Start CPR and give atropine; torsades is not a shockable rhythm']],
+  asystole: ['Begin CPR and give epinephrine per ACLS; asystole is not a shockable rhythm', ['Defibrillate immediately at maximum energy, then resume CPR', 'Give adenosine rapidly to restore an organized rhythm', 'Perform synchronized cardioversion at the lowest energy setting']],
 };
 function actionQuestion(s) {
   const a = ACTIONS[s.rhythm]; if (!a) return featureQuestion(s);
@@ -237,10 +243,10 @@ function actionQuestion(s) {
 }
 function artifactAction(s) {
   const fix = {
-    art_tremor: ['Help the patient relax, keep them warm and support the limbs, then repeat the recording', ['Unplug nearby electrical equipment', 'Increase the gain to double standard', 'Defibrillate the patient']],
-    art_wander: ['Check electrode contact/skin prep, reduce lead-wire tension and have the patient breathe normally', ['Unplug the treadmill', 'Give the patient a blanket for shivering', 'Change the paper speed to 50 mm/s']],
-    art_60hz: ['Unplug nonessential nearby electrical devices and check grounding and cable routing', ['Ask the patient to stop shivering', 'Re-abrade the skin only', 'Switch to half standard']],
-    art_loose: ['Check the patient, then reattach or replace the loose electrode/lead wire', ['Start CPR immediately', 'Increase the filter to 40 Hz', 'Call a code blue for asystole']],
+    art_tremor: ['Help the patient relax, keep them warm and support the limbs, then repeat the recording', ['Unplug nearby electrical equipment and check the grounding of the bed', 'Increase the gain to double standard so the complexes stand out', 'Turn on the 60 Hz filter and record again without speaking to the patient']],
+    art_wander: ['Check electrode contact/skin prep, reduce lead-wire tension and have the patient breathe normally', ['Unplug nearby electrical devices and turn on the notch filter', 'Give the patient a warm blanket because the waves are from shivering', 'Change the paper speed to 50 mm/s so the baseline straightens']],
+    art_60hz: ['Unplug nonessential nearby electrical devices and check grounding and cable routing', ['Ask the patient to stop shivering and support their arms and legs', 'Re-abrade the skin under every electrode and record again', 'Switch to half standard so the interference looks smaller']],
+    art_loose: ['Check the patient, then reattach or replace the loose electrode/lead wire', ['Start CPR immediately because the flat segment shows asystole', 'Increase the filter to 40 Hz and continue recording', 'Call a code blue and attach defibrillator pads for asystole']],
   }[s.rhythm];
   G({ area: 'B', subtopic: 'Troubleshooting', difficulty: 2, type: 'mcq', image: s.id, rhythm: s.rhythm, tags: ['scenario'],
     stem: 'You see this tracing while recording an ECG. The patient is awake and comfortable. What is the best corrective action?', options: [fix[0], ...fix[1]], answer: 0,
@@ -343,7 +349,7 @@ for (const s of twelve) {
       options: [`S in V1 + R in V5/V6 ≈ ${s.measured.voltage} mm (≥ 35 mm)`, 'R in aVR ≥ 5 mm', 'QRS duration ≥ 0.12 s', 'PR interval > 0.20 s'], answer: 0, explanation: `${t12Expl.lvh} Measured S V1 + tallest R V5/V6 ≈ ${s.measured.voltage} mm.`, source: SRC.AHA_LVH });
   } else if (isRev) {
     G({ area: 'B', subtopic: 'Troubleshooting', difficulty: 2, type: 'mcq', image: s.id, stem: 'You suspect electrode misplacement on this tracing. What should you do?',
-      options: ['Check and correct electrode placement, then repeat the ECG and label it as a repeat', 'Send it as is—the computer will correct it', 'Delete the leads that look abnormal', 'Report it as an acute MI'], answer: 0,
+      options: ['Check and correct electrode placement, then repeat the ECG and label it as a repeat', 'Send it as is, because the interpretation software corrects lead errors', 'Delete the abnormal-looking leads and transmit the remaining ones', 'Report it to the nurse as an acute MI so treatment can begin'], answer: 0,
       explanation: `${t12Expl[c]} Reversals can mimic infarction or axis deviation, so the tracing must be repeated with correct placement.`, source: SRC.AHA_STD });
   }
 }
@@ -393,8 +399,12 @@ for (const [qt, rr] of [[0.36, 0.64], [0.40, 1.0], [0.44, 0.81], [0.32, 0.49], [
 }
 
 // ---------------- Assemble, shuffle options, IDs ----------------
-const hand = [...A, ...B, ...C, ...D, ...E, ...F, ...EXTRA];
+const hand = [...A, ...B, ...C, ...D, ...E, ...F, ...EXTRA, ...COMM, ...TRAPS, ...ANAT];
 for (const q of hand) for (const [k, v] of Object.entries(EXPLAIN)) if (q.stem.startsWith(k)) { q.explanation += ' ' + v; break; }
+// self-review: swap in length-matched distractors (correct answer stays at index 0 until the shuffle)
+const usedFix = new Set();
+for (const q of hand) if (q.type === 'mcq') { const f = FIXES.find(([k]) => q.stem.startsWith(k)); if (f) { q.options = [q.options[0], ...f[1]]; usedFix.add(f[0]); } }
+for (const [k] of FIXES2) if (!usedFix.has(k)) console.warn('distractor fix not applied:', k.slice(0, 70));
 // Attach a reference strip to hand-written rhythm, interval and artifact questions whose STEM names the finding.
 const REF = [[/first-degree|PR interval of 0\.28/i, 'avb1'], [/Mobitz II/i, 'mobitz2'], [/Wenckebach|Mobitz I\b/i, 'mobitz1'], [/torsades/i, 'torsades'], [/asystole/i, 'asystole'],
   [/ventricular fibrillation/i, 'vfib'], [/sustained VT|VT on a monitor/i, 'vtach'], [/inverted P wave before a narrow QRS/i, 'junctional'], [/tremor|somatic|muscle artifact|shivering|anxious and tense/i, 'art_tremor'],

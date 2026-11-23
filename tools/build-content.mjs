@@ -5,6 +5,9 @@ import lessons from './content/lessons.mjs';
 import cards from './content/flashcards.mjs';
 import { glossary } from './content/glossary.mjs';
 import meds from './content/medications.mjs';
+import { anatomyLessons, anatomyCards } from './content/anatomy.mjs';
+import { communicationLessons, communicationCards } from './content/communication.mjs';
+import TRAPS from './content/traps-list.mjs';
 
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
 const strips = JSON.parse(fs.readFileSync(path.join(ROOT, 'data/strips.json'), 'utf8')).images;
@@ -31,11 +34,16 @@ const extraLessons = [
     '5. QRS: narrow (< 0.12 s, supraventricular) or wide (ventricular, BBB, paced)? Then name the rhythm and look for ectopy, pauses and pacing spikes.'],
     keyPoints: ['Rate → Rhythm → P → PR → QRS', 'Irregularly irregular + no P = AF', 'More P than QRS = AV block'], mnemonics: [{ name: 'Rate, Rhythm, P, PR, QRS', text: '"Real Rhythm Pros Prefer QRS."' }] },
 ];
-const allLessons = [...lessons, ...extraLessons].map(l => ({ ...l, areaName: AREAS[l.area] }));
+const allLessons = [...lessons, ...extraLessons, ...anatomyLessons, ...communicationLessons].map(l => ({ ...l, areaName: AREAS[l.area] }));
 fs.writeFileSync(path.join(ROOT, 'data/lessons.json'), JSON.stringify({ lessons: allLessons }, null, 0));
 
 // Flashcards
-const out = cards.map(([area, topic, front, back], i) => ({ id: `FC${String(i + 1).padStart(4, '0')}`, area, topic, front, back, ...(topic === 'Medications' ? { tags: ['medication'] } : {}) }));
+const TRAP_CARD_AREAS = ['B', 'C', 'D', 'E', 'F'];
+const parse = (txt, tags) => txt.trim().split('\n').map(l => l.split('|')).map(([area, topic, front, back]) => ({ area, topic, front, back, tags }));
+const allCards = [...cards.map(([area, topic, front, back]) => ({ area, topic, front, back, tags: topic === 'Medications' ? ['medication'] : undefined })),
+  ...parse(communicationCards, ['communication']),
+  ...Object.entries(TRAPS).filter(([a]) => TRAP_CARD_AREAS.includes(a)).flatMap(([area, list]) => list.map(([trap, fix]) => ({ area, topic: 'Exam traps', front: `Trap: ${trap}`, back: fix, tags: ['trap'] }))), ...parse(anatomyCards, ['anatomy', 'anatomy-bonus'])];
+const out = allCards.map((c, i) => ({ id: `FC${String(i + 1).padStart(4, '0')}`, area: c.area, topic: c.topic, front: c.front, back: c.back, ...(c.tags ? { tags: c.tags } : {}) }));
 let n = out.length;
 const RN = JSON.parse(fs.readFileSync(path.join(ROOT, 'data/questions.json'), 'utf8')); // for nothing but sanity
 const byR = {}; strips.filter(s => s.kind === 'strip').forEach(s => (byR[s.rhythm] = byR[s.rhythm] || []).push(s));
@@ -43,11 +51,16 @@ const third = new Set(['mobitz1', 'mobitz2', 'avb21', 'avb3', 'afib', 'aflutter'
 for (const [rid, list] of Object.entries(byR)) for (const s of [list[list.length - 1], list[list.length - 3], ...(third.has(rid) ? [list[list.length - 5]] : [])]) {
   out.push({ id: `FC${String(++n).padStart(4, '0')}`, area: 'F', topic: rid.startsWith('art_') ? 'Artifact' : 'Rhythm ID', front: 'Name this rhythm.', image: s.id, back: s.name, tags: ['image'] });
 }
+// Extra rhythm-ID cards (a different strip of each rhythm) so domain F keeps its 40% share of the deck
+for (const [rid, list] of Object.entries(byR).filter(([r]) => !r.startsWith('art_')).slice(0, 21)) out.push({ id: `FC${String(++n).padStart(4, '0')}`, area: 'F', topic: 'Rhythm ID', front: 'Name this rhythm.', image: list[1].id, back: list[1].name, tags: ['image'] });
 const twelve = strips.filter(s => s.kind === '12lead');
 const pickC = ['inferior', 'anterior', 'lateral', 'septal', 'lbbb', 'rbbb', 'lvh', 'lad', 'rad', 'posterior', 'hyperk', 'ischemia', 'anterolateral', 'normal', 'inferior', 'anterior', 'lbbb', 'rbbb'];
 const usedC = new Set();
 for (const c of pickC) { const s = twelve.filter(x => x.condition === c && !usedC.has(x.id)).pop(); if (s) usedC.add(s.id); if (s) out.push({ id: `FC${String(++n).padStart(4, '0')}`, area: 'C', topic: '12-lead ID', front: 'What does this 12-lead show?', image: s.id, back: s.name, tags: ['image'] }); }
 fs.writeFileSync(path.join(ROOT, 'data/flashcards.json'), JSON.stringify({ disclaimer: 'Study aid only. Not an official CCI product.', cards: out }));
+
+// Exam traps list
+fs.writeFileSync(path.join(ROOT, 'data/traps.json'), JSON.stringify({ areas: Object.fromEntries(Object.entries(TRAPS).map(([a, list]) => [a, list.map(([trap, fix]) => ({ trap, fix }))])) }));
 
 // Glossary & medication reference
 fs.writeFileSync(path.join(ROOT, 'data/glossary.json'), JSON.stringify({ terms: glossary.map(g => ({ ...g, areaName: AREAS[g.area] })) }));

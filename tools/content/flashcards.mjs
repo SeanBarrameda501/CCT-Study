@@ -408,4 +408,17 @@ F|Medications|Magnesium sulfate|Torsades de pointes.
 F|Medications|Loop diuretics and the ECG|Hypokalemia → U waves, flat T.
 F|Medications|Nitroglycerin + sildenafil|Severe hypotension — avoid.
 F|Medications|Anticoagulant examples|Warfarin, heparin, apixaban.
+C|12-lead analysis|Reciprocal change in inferior STEMI|ST depression in I and aVL.
+C|12-lead analysis|Reciprocal change in high lateral STEMI|ST depression in II, III, aVF.
+C|12-lead analysis|Lead V4R is used to detect…|Right ventricular infarction (with inferior STEMI).
+C|12-lead analysis|Wellens pattern|Deep symmetric or biphasic T waves in V2–V3 in a pain-free patient → critical proximal LAD stenosis.
+C|12-lead analysis|ST elevation in aVR + diffuse ST depression|Left main or multivessel ischemia — report immediately.
+C|12-lead analysis|Early repolarization|Concave ST elevation with J-point notching, young/healthy, no reciprocal change.
+C|12-lead analysis|Pericarditis ECG|Diffuse concave ST elevation + PR depression, no territory.
+C|12-lead analysis|Normal R/S transition zone|V3–V4.
+C|12-lead analysis|LAFB criteria|Axis −45° or more, qR in aVL, rS in II/III/aVF, QRS < 0.12 s.
+C|12-lead analysis|LPFB clue|Right axis deviation with rS in I and qR in III (after excluding RVH).
+C|12-lead analysis|WPW triad|Short PR < 0.12 s, delta wave, wide QRS.
+C|12-lead analysis|Incomplete RBBB|RBBB pattern with QRS 110–119 ms.
+C|12-lead analysis|Pathologic Q wave|≥ 0.04 s wide or ≥ 25% of the R-wave height.
 `.trim().split('\n')).map(l => l.split('|'));
