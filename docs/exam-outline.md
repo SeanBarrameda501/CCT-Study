@@ -2,7 +2,8 @@
 
 > Study aid only. This is **not** an official CCI document. Always confirm details on
 > [cci-online.org](https://cci-online.org/credentials/certified-cardiographic-technician/) before exam day.
-> Research performed 2026-11-23.
+> Research performed 2026-11-23; re-verified the same day against the live CCI credential page (S1), which
+> still shows the 6-domain matrix below, 130 questions (110 scored + 20 unscored), 2 hours and a 650/900 pass mark.
 
 ## Sources
 
@@ -33,11 +34,23 @@ current official page. Task wording is otherwise nearly identical.
 - No penalty for skipping, changing or revisiting questions (S2).
 - Fee $175 USD (S1/S3).
 
+### Test-day ID rules (S1, re-read 2026-11-23)
+- Bring **two original, unexpired IDs** (no photocopies). The first and last name must **exactly match** the name you registered with.
+- **Primary ID:** government-issued, with name, recent photo and signature (passport, driver's license, military ID, state/national ID card, alien registration card).
+- **Secondary ID:** any ID with name and signature, or name and a recent recognizable photo.
+- To reschedule, contact Pearson VUE **at least two full working days** in advance. One 90-day extension of the Authorization to Test may be requested.
+- Results: an unofficial score report at the test center; the official letter and certificate follow about 15 business days later.
+
 ### Item types (S1 "Question Types", S2)
 1. Traditional multiple choice – one of four options (A–D) correct.
 2. Multiple response – two or three correct from four to six options ("Select two correct responses").
 3. Hot spot – click one area of an image.
 4. Drag and place – drag labels onto areas of an image (not all tokens used).
+
+S1 also contains an older sentence saying "each question is shown with four possible answers, only one of which is
+the correct or best answer". That conflicts with the multiple-response and drag-and-place descriptions on the same page.
+The app mirrors the full list: four-option multiple choice, select-all-that-apply, ordering (as a stand-in for
+drag-and-place sequencing) and hot spot (tap a region on an ECG image).
 
 ## Examination matrix (current, S1)
 
@@ -128,6 +141,14 @@ standardization; paper speed; lead placement; electrical interference; somatic t
 4. Wagner & Strauss. *Marriott's Practical Electrocardiography*. Wolters Kluwer.
 
 ## App assumptions (our decisions, not CCI's)
+- **Anatomy, physiology and blood flow (extra weight, by request).** A recent test-taker reported that cardiac
+  anatomy and blood flow were heavily tested. CCI does not list A&P as its own domain; it appears in the knowledge list
+  and in task C4. The core bank keeps the CCI percentages above. On top of it, the app adds an **anatomy bonus set**
+  (tag `anatomy-bonus`, filed under domain C) covering chambers, valves, great vessels, coronary circulation, the conduction
+  system and the full path of blood. These items are excluded from the proportion check and reported separately
+  in the README and the validator output.
+- **Patient care and communication.** These skills sit in domain A (tasks A2, A3, A5, A7, A9, A10). The app's
+  patient-care section draws on domain A items plus stress and ambulatory patient-care items, so it does not change the weights.
 - **Item distribution** in `data/questions.json` follows the S1 percentages (±1 percentage point).
 - **Medications:** because CCI gives no sub-weight, we treat F11 as an equal share of domain F:
   40% ÷ 11 tasks ≈ **3.6% of the total**. Medication questions and flashcards are capped at that share.
