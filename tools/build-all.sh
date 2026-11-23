@@ -5,4 +5,5 @@ node tools/build-strips.mjs
 node tools/build-questions.mjs
 node tools/build-content.mjs
 node tools/build-attribution.mjs
+node tools/build-sw.mjs
 node tools/validate.mjs

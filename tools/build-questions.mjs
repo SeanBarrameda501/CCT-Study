@@ -123,6 +123,7 @@ function describe(s) {
   if (m.qrs != null) bits.push(`QRS ≈ ${m.qrs.toFixed(2)} s`);
   return bits.join(', ');
 }
+const lc = t => t.replace(/^[A-Z](?=[a-z])/, c => c.toLowerCase());
 const imgNote = s => (s.real ? 'real recording' : 'generated tracing');
 const ID_STEMS = [
   'Identify the rhythm on this lead {L} strip.',
@@ -142,7 +143,7 @@ function idQuestion(s, k, area = 'F', sub = FAMILY[s.rhythm]) {
   const isArt = s.rhythm.startsWith('art_');
   G({ area, subtopic: sub, difficulty: ['nsr', 'sbrady', 'stach', 'vfib', 'asystole', 'afib'].includes(s.rhythm) ? 1 : ['mobitz2', 'avb21', 'mat', 'wap', 'aivr', 'failsense', 'vfibfine', 'jtach'].includes(s.rhythm) ? 3 : 2,
     type: 'mcq', stem: (isArt ? 'What is causing the disturbance on this lead II strip?' : ID_STEMS[k % ID_STEMS.length]).replace('{L}', s.lead), image: s.id, options: opts, answer: 0,
-    explanation: `${CRIT[s.rhythm]} On this ${imgNote(s)}: ${describe(s)}. Why not ${NAME(wrongIds[0]).toLowerCase()}? ${CRIT[wrongIds[0]]}`, source: SRC.DUBIN + '; generated strip verified by tools/criteria.mjs', rhythm: s.rhythm });
+    explanation: `${CRIT[s.rhythm]} On this ${imgNote(s)}: ${describe(s)}. Why not ${lc(NAME(wrongIds[0]))}? ${CRIT[wrongIds[0]]}`, source: SRC.DUBIN + '; generated strip verified by tools/criteria.mjs', rhythm: s.rhythm });
 }
 function rateQuestion(s) {
   const irr = irregularIds.has(s.rhythm); const c = irr ? s.measured.qrsIn6s * 10 : s.measured.vrate;
@@ -191,7 +192,7 @@ function featureQuestion(s) {
   const right = shuffle(yes).slice(0, 2), wrong = shuffle(no).slice(0, 3);
   G({ area: 'F', subtopic: FAMILY[s.rhythm], difficulty: 2, type: 'multi', image: s.id, rhythm: s.rhythm,
     stem: 'Which findings are present on this strip? (Select two.)', options: [...right.map(f => f[0]), ...wrong.map(f => f[0])], answers: [0, 1],
-    explanation: `This is ${NAME(s.rhythm).toLowerCase()}: ${describe(s)}. ${CRIT[s.rhythm]}`, source: SRC.DUBIN });
+    explanation: `This is ${lc(NAME(s.rhythm))}: ${describe(s)}. ${CRIT[s.rhythm]}`, source: SRC.DUBIN });
 }
 function hotspotQuestion(s) {
   const regs = []; let stem = '', ans = [], expl = '';
@@ -232,7 +233,7 @@ function actionQuestion(s) {
   const a = ACTIONS[s.rhythm]; if (!a) return featureQuestion(s);
   G({ area: 'F', subtopic: 'Life-threatening', difficulty: 2, type: 'mcq', image: s.id, rhythm: s.rhythm, tags: ['scenario'],
     stem: 'Your patient becomes unresponsive, is not breathing normally and has no pulse. The monitor shows this rhythm. What is the most appropriate immediate action?',
-    options: [a[0], ...a[1]], answer: 0, explanation: `The rhythm is ${NAME(s.rhythm).toLowerCase()}. ${CRIT[s.rhythm]} AHA ACLS: VF/pulseless VT are shockable (CPR + defibrillation); asystole/PEA are non-shockable (CPR + epinephrine).`, source: SRC.ACLS });
+    options: [a[0], ...a[1]], answer: 0, explanation: `The rhythm is ${lc(NAME(s.rhythm))}. ${CRIT[s.rhythm]} AHA ACLS: VF/pulseless VT are shockable (CPR + defibrillation); asystole/PEA are non-shockable (CPR + epinephrine).`, source: SRC.ACLS });
 }
 function artifactAction(s) {
   const fix = {
@@ -310,7 +311,7 @@ for (const s of twelve) {
   const area = isRev ? 'B' : 'C', sub = isRev ? 'Troubleshooting' : info ? 'Ischemia & infarction' : ['lad', 'rad'].includes(c) ? 'Axis' : ['rbbb', 'lbbb'].includes(c) ? 'Bundle branch block' : c === 'lvh' ? 'Hypertrophy' : 'Ischemia & infarction';
   // 1. identify
   G({ area, subtopic: sub, difficulty: 2, type: 'mcq', image: s.id, stem: isRev ? 'This 12-lead was just recorded on a patient whose prior ECG was normal. What best explains the appearance?' : 'What is the best interpretation of this 12-lead ECG?',
-    options: [t12Name[c], ...t12Conf[c].map(k => t12Name[k])], answer: 0, explanation: (info ? `ST elevation in ${info.leads.join(', ')} indicates ${info.wall.toLowerCase()} wall injury, usually from the ${info.artery}. ${stText}` : t12Expl[c]) + (isRev ? ' Correct the electrode placement and repeat the ECG.' : '') + ` Why not ${t12Name[t12Conf[c][0]].toLowerCase()}? ${whyNot12(t12Conf[c][0])}`,
+    options: [t12Name[c], ...t12Conf[c].map(k => t12Name[k])], answer: 0, explanation: (info ? `ST elevation in ${info.leads.join(', ')} indicates ${info.wall.toLowerCase()} wall injury, usually from the ${info.artery}. ${stText}` : t12Expl[c]) + (isRev ? ' Correct the electrode placement and repeat the ECG.' : '') + ` Why not ${lc(t12Name[t12Conf[c][0]])}? ${whyNot12(t12Conf[c][0])}`,
     source: info ? SRC.UDMI : isRev ? SRC.AHA_STD : c === 'lvh' ? SRC.AHA_LVH : ['rbbb', 'lbbb'].includes(c) ? SRC.AHA_BBB : SRC.MARRIOTT });
   if (info) {
     G({ area: 'C', subtopic: 'Ischemia & infarction', difficulty: 2, type: 'mcq', image: s.id, stem: 'Which coronary artery is most likely occluded in this patient with chest pain?',
