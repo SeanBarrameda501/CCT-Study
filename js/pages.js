@@ -3,11 +3,12 @@ import { D, AREAS, AREA_FULL, AREA_PCT, AREA_ICON } from './data.js';
 import { $, $$, h, esc, toast, pct, bar, shuffle, ecgImage } from './ui.js';
 import * as S from './store.js';
 import { runSession } from './quiz.js';
+import * as PL from './planner.js';
 
 const go = (el, title, items) => runSession(el, { title, items });
 
 // ---------- Flashcard session ----------
-export function cardSession(el, cards, title) {
+export function cardSession(el, cards, title, opts = {}) {
   if (!cards.length) { el.innerHTML = `<div class="card"><h2>${esc(title)}</h2><p>No cards here right now.</p><a class="btn" href="#/flashcards">Back</a></div>`; return; }
   let i = 0, got = 0;
   const show = () => {
@@ -21,12 +22,13 @@ export function cardSession(el, cards, title) {
     const f = $('.flip', el); const flip = () => f.classList.toggle('flipped'); f.onclick = e => { if (!e.target.closest('.zoom-btn,a')) flip(); }; f.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); flip(); } };
     $$('[data-g]', el).forEach(b => b.onclick = () => { const ok = b.dataset.g === '1'; if (ok) got++; S.recordCard(c, ok); i++; i < cards.length ? show() : done(); });
   };
-  const done = () => { el.innerHTML = `<div class="card center"><h2>Deck finished</h2><div class="big-num">${got}/${cards.length}</div><p>got it</p><p class="muted">Missed cards will come back tomorrow in Daily review.</p><div class="btn-row stretch"><a class="btn primary" href="#/flashcards">More cards</a><a class="btn" href="#/">Home</a></div></div>`; };
+  const done = () => { if (opts.onFinish) opts.onFinish({ got, n: cards.length }); el.innerHTML = `<div class="card center"><h2>Deck finished</h2><div class="big-num">${got}/${cards.length}</div><p>got it</p><p class="muted">Missed cards will come back tomorrow in Daily review.</p><div class="btn-row stretch"><a class="btn primary" href="#/flashcards">More cards</a><a class="btn" href="#/">Home</a></div></div>`; };
   show();
 }
 
 // ---------- Rhythm trainer ----------
-export function trainer(el) {
+export function trainer(el, a, p, opts = {}) {
+  let checked = 0;
   const pool = Object.values(D.strips).filter(s => s.kind === 'strip' && !s.rhythm.startsWith('art_') && s.measured.vrate > 0);
   const names = [...new Map(pool.map(s => [s.rhythm, s.name.replace(/ \(.*\)$/, '')])).entries()].sort((a, b) => a[1].localeCompare(b[1]));
   let s = null, hint = false;
@@ -56,6 +58,7 @@ export function trainer(el) {
         ${row(prOk, 'PR', pr ? pr + ' s' : '', m.pr == null ? 'none / not measurable' : m.prConst ? m.pr.toFixed(2) + ' s' : `varies ${m.prRange[0].toFixed(2)}–${m.prRange[1].toFixed(2)} s`)}${row(qrsOk, 'QRS', qrs ? qrs + ' s' : '', (m.qrs ?? 0).toFixed(2) + ' s')}${row(nameOk, 'Rhythm', names.find(n => n[0] === nm)?.[1], s.name)}</table>
         <p class="src">Tolerance: rate ±10%, intervals ±0.04 s (one small box). Strip ${esc(s.id)} — generated and checked against textbook criteria.</p></div>`;
       S.profile().days[S.today()] = (S.profile().days[S.today()] || 0) + 1; S.save();
+      checked++; if (opts.goal) { if (checked >= opts.goal && opts.onDone) { opts.onDone(); toast(`Task done: ${checked} strips measured ✓`); } else if (checked < opts.goal) toast(`${checked}/${opts.goal} strips for today's task`); }
     };
   };
   next();
@@ -73,7 +76,8 @@ const CALCS = {
   dp: { t: 'Double product', make: r => { const hr = 100 + Math.floor(r() * 9) * 10, sbp = 140 + Math.floor(r() * 7) * 10; return { q: `Peak HR ${hr} bpm and BP ${sbp}/80 mm Hg. What is the double (rate-pressure) product?`, a: hr * sbp, tol: 0, unit: '', work: `HR × SBP = ${hr} × ${sbp} = ${(hr * sbp).toLocaleString()}.` }; } },
   strip: { t: 'Rate from a strip', make: null },
 };
-export function calc(el, [kind]) {
+export function calc(el, [kind], p = {}, opts = {}) {
+  let mixKinds = null; if (kind === 'mix') { mixKinds = Object.keys(CALCS); }
   if (!kind) {
     el.innerHTML = `<div class="card"><h2>🧮 Calculation practice</h2><p class="muted">Instant checking with worked examples.</p><ul class="list">${Object.entries(CALCS).map(([k, c]) => `<li><a href="#/calc/${k}"><span class="grow"><b>${esc(c.t)}</b></span><span class="chev"></span></a></li>`).join('')}</ul></div>
       <div class="card"><h3>Formulas</h3><ul><li>Rate (regular) = 300 ÷ large boxes = 1500 ÷ small boxes = 60 ÷ R–R (s)</li><li>Rate (irregular) = QRS in 6 s × 10</li><li>Time = small boxes × 0.04 s (25 mm/s) · × 0.02 s (50 mm/s)</li><li>APMHR = 220 − age; target ≥ 85%</li><li>QTc (Bazett) = QT ÷ √RR</li><li>Double product = HR × SBP</li></ul></div>`;
@@ -84,36 +88,18 @@ export function calc(el, [kind]) {
     let pr;
     if (kind === 'strip') { const s = shuffle(Object.values(D.strips).filter(x => x.kind === 'strip' && x.measured.regular && x.measured.vrate > 30 && !x.rhythm.startsWith('art_')))[0];
       pr = { q: 'Calculate the ventricular rate of this regular strip (1500 ÷ small boxes between R waves).', a: s.measured.vrate, tol: Math.max(5, Math.round(s.measured.vrate * 0.08)), unit: 'bpm', work: `R–R ≈ ${(60 / s.measured.vrate).toFixed(2)} s ≈ ${Math.round(1500 / s.measured.vrate)} small boxes → 1500 ÷ ${Math.round(1500 / s.measured.vrate)} ≈ ${s.measured.vrate} bpm. Rhythm: ${s.name}.`, img: s.id };
-    } else pr = CALCS[kind].make(r);
-    el.innerHTML = `<div class="progress-top"><b>${esc(CALCS[kind].t)}</b><span class="muted">${score}/${n} correct</span></div><div class="card"><div class="img"></div><p class="q-stem">${esc(pr.q)}</p>
+    } else if (mixKinds) { const k = mixKinds[Math.floor(r() * (mixKinds.length - 1))]; pr = CALCS[k].make(r); pr.t = CALCS[k].t; }
+    else pr = CALCS[kind].make(r);
+    el.innerHTML = `<div class="progress-top"><b>${esc(mixKinds ? 'Mixed calculations · ' + pr.t : CALCS[kind].t)}</b><span class="muted">${score}/${n} correct${opts.goal ? ` · goal ${opts.goal}` : ''}</span></div><div class="card"><div class="img"></div><p class="q-stem">${esc(pr.q)}</p>
       <div style="display:flex;gap:8px;align-items:center"><input type="number" step="any" inputmode="decimal" id="ans" aria-label="Your answer"> <span>${esc(pr.unit)}</span></div>
       <div class="btn-row"><button class="btn primary" id="chk">Check</button><button class="btn ghost" id="skip">Show answer</button><a class="btn ghost" href="#/calc">All calculations</a></div><div id="out"></div></div>`;
     if (pr.img) $('.img', el).append(ecgImage(pr.img, { caliper: true }));
-    const reveal = ok => { n++; if (ok) score++; $('#out', el).innerHTML = `<div class="feedback ${ok ? 'ok' : 'bad'}"><h3>${ok ? '✓ Correct' : `✗ Answer: ${pr.a}${pr.unit ? ' ' + pr.unit : ''}`}</h3><p><b>Worked example:</b> ${esc(pr.work)}</p></div><button class="btn primary block" id="nx">Next →</button>`; $('#nx', el).onclick = next; $('#chk', el).disabled = true; };
+    const reveal = ok => { n++; if (ok) score++; if (opts.goal && n === opts.goal && opts.onDone) { opts.onDone(); toast('Task done ✓'); } $('#out', el).innerHTML = `<div class="feedback ${ok ? 'ok' : 'bad'}"><h3>${ok ? '✓ Correct' : `✗ Answer: ${pr.a}${pr.unit ? ' ' + pr.unit : ''}`}</h3><p><b>Worked example:</b> ${esc(pr.work)}</p></div><button class="btn primary block" id="nx">Next →</button>`; $('#nx', el).onclick = next; $('#chk', el).disabled = true; };
     $('#chk', el).onclick = () => { const v = parseFloat($('#ans', el).value); if (isNaN(v)) return toast('Enter a number'); reveal(Math.abs(v - pr.a) <= pr.tol); };
     $('#ans', el).addEventListener('keydown', e => { if (e.key === 'Enter') $('#chk', el).click(); });
     $('#skip', el).onclick = () => reveal(false);
   };
   next();
-}
-
-// ---------- Study plan ----------
-export function plan(el) {
-  const exam = new Date(S.settings().examDate + 'T00:00:00'); const start = new Date(exam); start.setDate(start.getDate() - 55);
-  const W = [
-    ['Learn: Pre-procedural & Resting ECG', 'Lessons A & B, lead placement diagram, color codes, paper & calibration. Flashcards for A and B every day. Topic drills on Pre-Procedural (10%) and Resting ECG (14%).', ['Read 2–3 lessons', 'Topic drill 20 questions', '25 flashcards', 'Lead placement from memory']],
-    ['Learn: Rhythm Analysis (40%)', 'Sinus, atrial, junctional, ventricular, heart blocks, pacemakers, artifact, intervals and medications. Use the rhythm trainer daily — measure before naming.', ['Rhythm trainer × 10 strips', 'Topic drill F 25 questions', 'Calculation practice 10', '30 flashcards (images deck)']],
-    ['Learn: 12-lead, Stress & Ambulatory', 'Axis, BBB, hypertrophy, ischemia by lead group (I SAW LA), plus Bruce stages, contraindications and endpoints, and Holter hook-up/education.', ['Lead-group lesson', 'Topic drills C, D, E', 'Patient scenarios', '25 flashcards']],
-    ['Mixed practice + spaced review', 'Daily interleaved quizzes in exam proportions. Clear the Daily review queue every day before new questions.', ['Daily review (all due)', 'Interleaved practice 30', 'Rapid fire × 2 rounds', 'Weak-spot drill']],
-    ['Mixed practice + spaced review', 'Keep interleaving. Add smart review for slow and guessed questions. Use the 12-lead hot-spot items.', ['Daily review', 'Interleaved practice 30', 'Smart review 20', 'Rhythm trainer × 5']],
-    ['Mixed practice + spaced review', 'Push accuracy above 75% in every area. Re-read lessons only for topics that stay weak.', ['Daily review', 'Interleaved practice 40', 'Weak-spot drill', 'Cheat-sheet review']],
-    ['Full timed practice exams', 'Take 3 full 130-question exams on separate days under real timing. Review every missed item and its mini-lesson.', ['Practice exam (2 h) on 3 days', 'Review missed + Daily review', 'Light flashcards on rest days']],
-    ['Light review of weak spots', 'No cramming. Short weak-spot drills, flashcards and cheat sheets. Sleep 7–9 hours. Day before: a 15-minute low-stakes recap, then rest.', ['Weak-spot drill 15', 'Flashcards due', 'Cheat sheets', 'Bedtime 10-minute recap']],
-  ];
-  const now = new Date(); const wk = Math.floor((now - start) / (7 * 86400000));
-  el.innerHTML = `<div class="card"><h2>🗓️ 8-week study plan</h2><p>Ending on your exam date: <b>${exam.toDateString()}</b> <a href="#/settings">(change)</a>. ${wk < 0 ? `Plan starts ${start.toDateString()}.` : wk > 7 ? 'Exam date has passed — update it in Settings.' : `You are in <b>week ${wk + 1}</b>.`}</p></div>
-    ${wk >= 0 && wk <= 7 ? `<div class="card"><h3>Today's checklist</h3><ul>${W[wk][2].map(t => `<li>${esc(t)}</li>`).join('')}</ul><div class="btn-row"><a class="btn primary" href="#/${['drill', 'trainer', 'drill/C', 'mixed?n=30', 'mixed?n=30', 'mixed?n=40', 'exam', 'weak'][wk]}">Start</a><a class="btn" href="#/review">Daily review</a></div></div>` : ''}
-    ${W.map((w, i) => { const a = new Date(start); a.setDate(a.getDate() + i * 7); const b = new Date(a); b.setDate(b.getDate() + 6); return `<div class="week ${i === wk ? 'now' : ''}"><b>Week ${i + 1}: ${esc(w[0])}</b><br><small class="muted">${a.toLocaleDateString()} – ${b.toLocaleDateString()}</small><p>${esc(w[1])}</p></div>`; }).join('')}`;
 }
 
 // ---------- Library ----------
@@ -127,13 +113,23 @@ export function library(el) {
     <a class="tile" href="#/images"><span class="ico">🖼️</span><b>ECG gallery</b><small>real & generated</small></a></div>
     <h2 style="margin-top:16px">Lessons</h2>${Object.keys(AREAS).map(a => `<div class="card"><h3>${AREA_ICON[a]} ${esc(AREA_FULL[a])}</h3><ul class="list">${D.lessonList.filter(l => l.area === a).map(l => `<li><a href="#/lesson/${l.id}"><span class="grow">${esc(l.title)}</span><span class="chev"></span></a></li>`).join('')}</ul></div>`).join('')}`;
 }
-export function lesson(el, [id]) {
+export function lesson(el, [id], p = {}) {
   const l = D.lessons[id]; if (!l) { el.innerHTML = '<div class="card">Lesson not found.</div>'; return; }
   const qs = D.questions.filter(q => q.lesson === id);
   el.innerHTML = `<div class="card"><span class="badge area">${esc(AREAS[l.area])}</span><h2>${esc(l.title)}</h2>${l.body.map(p => `<p>${esc(p)}</p>`).join('')}
     <h3>Key points</h3><ul>${l.keyPoints.map(k => `<li>${esc(k)}</li>`).join('')}</ul>${l.mnemonics.length ? `<h3>Memory aids</h3>${l.mnemonics.map(m => `<p>💡 <b>${esc(m.name)}:</b> ${esc(m.text)}</p>`).join('')}` : ''}
     <div class="btn-row">${qs.length ? `<button class="btn primary" id="lq">Quiz me on this (${Math.min(12, qs.length)})</button>` : ''}${id.startsWith('C-') || id.startsWith('B-') || id === 'A-landmarks' ? '<a class="btn" href="#/leads">Lead diagrams</a>' : ''}<a class="btn ghost" href="#/library">All lessons</a></div></div>`;
   const b = $('#lq', el); if (b) b.onclick = () => go(el, l.title, shuffle(qs).slice(0, 12));
+  const read = S.profile().lessonsRead?.[id];
+  const mk = h(`<div class="card center"><button class="btn ${read ? '' : 'primary'} block" id="mark">${read ? '✓ Studied ' + new Date(read).toLocaleDateString() + ' — tap to study again' : '✓ Mark studied'}</button><small class="muted">Marking a lesson studied checks it off in your plan.</small></div>`);
+  el.append(mk);
+  $('#mark', mk).onclick = () => {
+    PL.plan(); S.profile().lessonsRead[id] = Date.now();
+    const tasks = Object.values(PL.plan().days).flat().filter(t => t.type === 'lesson' && t.lesson === id);
+    const target = (p.task && PL.findTask(p.task)) || tasks.find(t => !PL.isDone(t) && t.date <= PL.todayStr()) || tasks.find(t => !PL.isDone(t));
+    if (target) PL.complete(target.id); else S.save(true);
+    toast('Lesson marked studied ✓'); location.hash = p.back || '#/';
+  };
 }
 
 // Lead placement diagrams (drawn here, not images)

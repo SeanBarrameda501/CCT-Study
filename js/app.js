@@ -4,6 +4,8 @@ import { $, $$, h, esc, toast, pct, bar, shuffle, sample, accCls, download, ecgI
 import * as S from './store.js';
 import { runSession, runRapid } from './quiz.js';
 import * as P from './pages.js';
+import * as G from './guide.js';
+import * as PL from './planner.js';
 
 const main = () => $('#main');
 let cleanup = null;
@@ -17,30 +19,38 @@ export function applyTheme() {
 
 // ---------- routing ----------
 const routes = {
-  '': home, study, quick, drill, mixed, smart, review, exam, flashcards, rapid: () => { cleanup = runRapid(main()); }, bookmarks, search, scenarios, weak,
-  settings, profiles, trainer: P.trainer, calc: P.calc, plan: P.plan, library: P.library, lesson: P.lesson, leads: P.leads, glossary: P.glossary,
+  '': G.today, today: G.today, learn: G.learn, practice: G.practice, reviewhub: G.reviewHub, progress: G.progress,
+  task: G.task, day: G.day, calendar: G.calendar, plan: G.calendar, catchup: G.catchup, plansettings: G.planSettings, help: G.help,
+  recap: G.recap, final: G.finalWeek, traps: G.traps, care: G.care, anatomy: G.anatomy, study: G.practice,
+  quick, drill, mixed, smart, review, exam, flashcards, rapid: () => { cleanup = runRapid(main()); }, bookmarks, search, scenarios, weak,
+  settings, profiles, trainer: P.trainer, calc: P.calc, library: P.library, lesson: P.lesson, leads: P.leads, glossary: P.glossary,
   mnemonics: P.mnemonics, meds: P.meds, cheat: P.cheat, guide: P.guide, about: P.about, images: P.images,
 };
+export const setCleanup = f => { cleanup = f; };
 function route() {
   if (cleanup) { try { cleanup(); } catch (e) { /* ignore */ } cleanup = null; }
   const [path, qs] = location.hash.replace(/^#\/?/, '').split('?');
   const [name, ...args] = path.split('/');
   const params = Object.fromEntries(new URLSearchParams(qs || ''));
-  const fn = routes[name] || home;
+  const fn = routes[name] || G.today;
   $$('.tabbar a').forEach(a => a.classList.toggle('active', a.dataset.tab === tabFor(name)));
   $('.topbar .title').textContent = titles[name] || 'CCT Study';
   $('.profile-chip').textContent = '👤 ' + S.profile().name;
   main().innerHTML = '';
   const r = fn(main(), args, params); if (typeof r === 'function') cleanup = r;
   window.scrollTo({ top: 0 });
+  if (D.ready && !S.profile().seenIntro && !document.querySelector('.wt')) G.walkthrough();
 }
-const titles = { '': 'CCT Study', study: 'Study modes', review: 'Daily review', flashcards: 'Flashcards', library: 'Library', settings: 'Settings', exam: 'Practice exam', trainer: 'Rhythm trainer', calc: 'Calculations', plan: 'Study plan', weak: 'Weak spots', glossary: 'Glossary', mnemonics: 'Memory aids', meds: 'Medications', cheat: 'Cheat sheets', guide: 'How to study', leads: 'Lead placement', scenarios: 'Patient scenarios', bookmarks: 'Bookmarks', search: 'Search', profiles: 'Profiles', rapid: 'Rapid fire', lesson: 'Lesson', about: 'About', images: 'Image gallery' };
-const tabFor = n => (['', 'about'].includes(n) ? 'home' : ['review', 'flashcards'].includes(n) ? 'review' : ['library', 'lesson', 'leads', 'glossary', 'mnemonics', 'meds', 'cheat', 'images'].includes(n) ? 'library' : ['settings', 'profiles', 'guide', 'plan'].includes(n) ? 'more' : 'study');
+const titles = { '': 'Today', today: 'Today', learn: 'Learn', practice: 'Practice', reviewhub: 'Review', progress: 'Progress', task: 'Task', day: 'Study day', calendar: 'Study calendar', catchup: 'Catch up', plansettings: 'Plan settings', help: 'Help', recap: 'End-of-day recap', final: 'Final week', traps: 'Exam traps', care: 'Patient care', anatomy: 'Anatomy', quick: 'Quick quiz', drill: 'Topic drill', mixed: 'Interleaved', smart: 'Smart review', calc: 'Calculations', study: 'Practice', review: 'Daily review', flashcards: 'Flashcards', library: 'Library', settings: 'Settings', exam: 'Practice exam', trainer: 'Rhythm trainer', calc: 'Calculations', plan: 'Study plan', weak: 'Weak spots', glossary: 'Glossary', mnemonics: 'Memory aids', meds: 'Medications', cheat: 'Cheat sheets', guide: 'How to study', leads: 'Lead placement', scenarios: 'Patient scenarios', bookmarks: 'Bookmarks', search: 'Search', profiles: 'Profiles', rapid: 'Rapid fire', lesson: 'Lesson', about: 'About', images: 'Image gallery' };
+const tabFor = n => (['', 'today', 'day', 'catchup', 'task'].includes(n) ? 'today'
+  : ['reviewhub', 'review', 'flashcards', 'weak', 'final', 'recap', 'bookmarks'].includes(n) ? 'review'
+  : ['learn', 'library', 'lesson', 'leads', 'glossary', 'mnemonics', 'meds', 'cheat', 'images', 'guide', 'traps', 'care', 'anatomy'].includes(n) ? 'learn'
+  : ['progress', 'settings', 'profiles', 'plan', 'calendar', 'plansettings', 'help', 'about'].includes(n) ? 'progress' : 'practice');
 
 // ---------- helpers ----------
 const Q = () => D.questions;
 const daysTo = d => Math.ceil((new Date(d + 'T09:00:00') - new Date()) / 86400000);
-function gauge(prob, evidence) {
+export function gauge(prob, evidence) {
   const ang = Math.PI * prob, x = 55 - 45 * Math.cos(ang), y = 60 - 45 * Math.sin(ang);
   const col = prob >= 0.7 ? 'var(--ok)' : prob >= 0.45 ? 'var(--warn)' : 'var(--bad)';
   return `<svg viewBox="0 0 110 70" aria-hidden="true"><path d="M10 60 A45 45 0 0 1 100 60" fill="none" stroke="var(--surface-2)" stroke-width="10" stroke-linecap="round"/>
@@ -48,7 +58,7 @@ function gauge(prob, evidence) {
     <text x="55" y="56" text-anchor="middle" font-size="18" font-weight="800" fill="var(--text)">${evidence < 0.15 ? '—' : Math.round(prob * 100) + '%'}</text></svg>`;
 }
 export function startQuiz(title, items, extra = {}) { cleanup = runSession(main(), { title, items, ...extra }); }
-function weightedMix(pool, n) { // proportional to CCI weights, interleaved so consecutive items change topic
+export function weightedMix(pool, n) { // proportional to CCI weights, interleaved so consecutive items change topic
   const by = {}; for (const q of shuffle(pool)) (by[q.area] = by[q.area] || []).push(q);
   const out = []; const want = Object.fromEntries(Object.keys(AREA_PCT).map(a => [a, Math.round(n * AREA_PCT[a] / 100)]));
   let guard = 0; while (out.length < n && guard++ < n * 10) {
@@ -57,54 +67,8 @@ function weightedMix(pool, n) { // proportional to CCI weights, interleaved so c
   }
   return out;
 }
-const unseenFirst = pool => { const p = S.profile().q; return [...shuffle(pool.filter(q => !p[q.id])), ...shuffle(pool.filter(q => p[q.id]))]; };
+export const unseenFirst = pool => { const p = S.profile().q; return [...shuffle(pool.filter(q => !p[q.id])), ...shuffle(pool.filter(q => p[q.id]))]; };
 
-// ---------- Home ----------
-function home(el) {
-  const s = S.settings(), st = S.areaStats(Q()), rd = S.readiness(Q()), dleft = daysTo(s.examDate);
-  const todayN = S.profile().days[S.today()] || 0, due = S.dueQuestions(Q()).length + S.dueCards(D.cards).length;
-  el.innerHTML = `
-  <div class="card"><div class="gauge">${gauge(rd.prob, rd.evidence)}<div><h2 style="margin:0">Readiness</h2>
-    <p class="muted" style="margin:.2em 0">${rd.evidence < 0.15 ? 'Answer some questions to see your estimate.' : `Estimated chance of passing: <b>${Math.round(rd.prob * 100)}%</b> (expected score ≈ ${pct(rd.est)})`}</p>
-    <p style="margin:.2em 0"><b>${dleft >= 0 ? dleft : 0}</b> day${dleft === 1 ? '' : 's'} to your exam <small class="muted">(${esc(s.examDate)} · <a href="#/settings">change</a>)</small></p></div></div>
-    <small class="muted">Estimate blends recent accuracy per area (weighted by the CCI exam matrix) with your last practice exams. It is not a CCI score.</small></div>
-  <div class="card tight"><div class="stats"><div class="stat"><b>🔥 ${S.streak()}</b><small>day streak</small></div><div class="stat"><b>${todayN}/${s.goal}</b><small>today's goal</small></div><div class="stat"><b>${due}</b><small>due for review</small></div></div>
-    <div style="margin-top:10px">${bar(todayN / s.goal, todayN >= s.goal ? 'ok' : '')}</div></div>
-  <div class="grid tiles">
-    <a class="tile" href="#/review"><span class="ico">🔁</span><b>Daily review</b><small>${due} due today</small></a>
-    <a class="tile" href="#/quick"><span class="ico">⚡</span><b>Quick quiz</b><small>10–20 questions</small></a>
-    <a class="tile" href="#/exam"><span class="ico">⏱️</span><b>Practice exam</b><small>130 Q · 2 h</small></a>
-    <a class="tile" href="#/trainer"><span class="ico">📏</span><b>Rhythm trainer</b><small>measure & name</small></a>
-    <a class="tile" href="#/flashcards"><span class="ico">🃏</span><b>Flashcards</b><small>${D.cards.length} cards</small></a>
-    <a class="tile" href="#/rapid"><span class="ico">⏲️</span><b>Rapid fire</b><small>60-second rounds</small></a>
-  </div>
-  <h2 style="margin-top:18px">Content areas</h2>
-  ${Object.keys(AREAS).map(a => { const x = st[a] || {}; return `<a class="card tight" style="display:block;text-decoration:none;color:inherit" href="#/drill/${a}">
-    <div style="display:flex;gap:10px;align-items:center"><span style="font-size:1.4em">${AREA_ICON[a]}</span><div class="grow" style="flex:1;min-width:0"><b>${esc(AREAS[a])}</b> <small class="muted">${AREA_PCT[a]}% of exam</small><br>
-    <small class="muted">Seen ${x.seen || 0}/${x.total || 0} · Accuracy ${pct(x.acc)}</small></div><span class="chev"></span></div><div style="margin-top:8px">${bar(x.acc, accCls(x.acc))}</div></a>`; }).join('')}
-  <div class="grid two"><a class="btn" href="#/weak">📉 Weak spots</a><a class="btn" href="#/plan">🗓️ Study plan</a><a class="btn" href="#/guide">🧠 How to study</a><a class="btn" href="#/search">🔎 Search</a></div>
-  <p class="disclaimer">Study aid only. <b>Not an official CCI product</b>; not affiliated with or endorsed by Cardiovascular Credentialing International. <a href="#/about">About & sources</a></p>`;
-}
-
-// ---------- Study modes menu ----------
-function study(el) {
-  const item = (href, ico, t, d) => `<li><a href="${href}"><span style="font-size:1.3em">${ico}</span><span class="grow"><b>${t}</b><br><small class="muted">${d}</small></span><span class="chev"></span></a></li>`;
-  el.innerHTML = `<div class="card"><ul class="list">
-    ${item('#/quick', '⚡', 'Quick quiz', '10–20 mixed questions with instant feedback')}
-    ${item('#/mixed', '🔀', 'Interleaved practice', 'Topics shuffled together, weighted like the real exam')}
-    ${item('#/smart', '🎯', 'Smart review', 'Extra weight on slow, guessed and twice-missed questions')}
-    ${item('#/drill', '📚', 'Topic drill', 'One content area or subtopic')}
-    ${item('#/exam', '⏱️', 'Full practice exam', '130 questions · 2 hours · pass estimate')}
-    ${item('#/trainer', '📏', 'Rhythm trainer', 'Measure rate & intervals, then name the rhythm')}
-    ${item('#/calc', '🧮', 'Calculation practice', '300/1,500 methods, intervals, target HR, QTc')}
-    ${item('#/scenarios', '🧑‍⚕️', 'Patient scenarios', 'Prep, infection control, emergencies, symptomatic patients')}
-    ${item('#/rapid', '⏲️', 'Rapid fire', '60-second rounds with a running score')}
-    ${item('#/flashcards', '🃏', 'Flashcards', 'Flip cards that feed the spaced-repetition schedule')}
-    ${item('#/weak', '📉', 'Weak spots', 'Your lowest-scoring topics, one tap to drill')}
-    ${item('#/bookmarks', '★', 'Bookmarks', `${S.profile().bookmarks.length} saved questions`)}
-    ${item('#/search', '🔎', 'Search questions', 'Find questions by keyword')}
-  </ul></div>`;
-}
 function quick(el, a, p) {
   const n = +p.n || 0;
   if (!n) { el.innerHTML = `<div class="card"><h2>Quick quiz</h2><p>How many questions?</p><div class="seg">${[10, 15, 20].map(x => `<button data-n="${x}">${x}</button>`).join('')}</div>
@@ -146,24 +110,32 @@ function review(el, a, p) {
     <div class="card"><h3>How the schedule works</h3><p>Missed items come back after <b>1 day</b>, then <b>3 days</b>, <b>1 week</b> and <b>2 weeks</b>. After ${S.RETIRE_AFTER} correct answers in a row they drop out of the queue. Questions you got right but marked <i>unsure</i> or <i>guess</i> also come back tomorrow.</p></div>
     ${dq.length ? `<div class="card"><h3>Due questions by area</h3>${Object.keys(AREAS).map(x => { const n = dq.filter(q => q.area === x).length; return n ? `<p>${esc(AREAS[x])}: <b>${n}</b></p>` : ''; }).join('')}</div>` : '<div class="card"><p>Nothing due right now 🎉 Keep learning new material with a quick quiz.</p><a class="btn primary" href="#/quick?n=15">Quick quiz</a></div>'}`;
 }
+export function buildExam() {
+  const counts = { A: 13, B: 18, C: 29, D: 13, E: 5, F: 52 }; const items = [];
+  for (const [ar, n] of Object.entries(counts)) items.push(...unseenFirst(Q().filter(q => q.area === ar && !q.tags?.includes('anatomy-bonus'))).slice(0, n * 3).sort(() => Math.random() - 0.5).slice(0, n));
+  const mixedItems = shuffle(items); return { items: mixedItems, pre: new Set(sample([...mixedItems.keys()], 20)) };
+}
 function exam(el, a, p) {
+  const minutes = S.settings().examMinutes || 110;
+  if (p.pacing) { if (!p.start) { el.innerHTML = `<div class="card"><h2>⏲️ Pacing drill</h2><p>30 questions in 26 minutes, the same pace as the real exam (1 h 50 min for 130 questions ≈ 51 seconds each). A pace coach shows whether you are on time or behind and nudges you to flag slow questions.</p><a class="btn primary block" href="#/exam?pacing=1&start=1">Start pacing drill</a></div>`; return; }
+    return startQuiz('Pacing drill', weightedMix(Q(), 30), { mode: 'exam', timeLimit: 26, pace: (110 * 60) / 130 }); }
   if (!p.start) {
     const past = S.profile().exams.slice(-5).reverse();
     el.innerHTML = `<div class="card"><h2>Full practice exam</h2><p>Mirrors the CCI CCT format: <b>130 questions in 2 hours</b> (on test day you get 1 h 50 min for questions plus 10 min for the tutorial and survey). Questions are drawn in the official proportions:</p>
       <table class="simple">${Object.keys(AREAS).map(x => `<tr><td>${esc(AREA_FULL[x])}</td><td>${AREA_PCT[x]}%</td><td>${Math.round(130 * AREA_PCT[x] / 100)}</td></tr>`).join('')}</table>
       <p class="muted">No feedback until the end. You can skip, flag and go back (there is no penalty for changing answers). 20 random items are treated as unscored pretest items; the score uses the other 110. Pass estimate: ≥ 70% correct (CCI uses a scaled score of 650/900, which is not a percentage).</p>
+      <label class="field"><span>Time on the clock</span><select id="exmin"><option value="110" ${minutes === 110 ? 'selected' : ''}>1 h 50 min — real question time (recommended)</option><option value="120" ${minutes === 120 ? 'selected' : ''}>2 h — includes the 10 tutorial/survey minutes</option></select></label>
+      <p class="muted">⏲️ A pacing coach shows ✓ On pace / ⚠ Behind and the time on each question. Flag questions and review them at the end, like the real test.</p>
       <a class="btn primary block" href="#/exam?start=1">Start the exam</a></div>
-      ${past.length ? `<div class="card"><h3>Previous exams</h3><table class="simple">${past.map(e => `<tr><td>${new Date(e.date).toLocaleDateString()}</td><td>${e.correct}/${e.scored}</td><td><b>${pct(e.pct)}</b></td><td>${e.minutes} min</td></tr>`).join('')}</table></div>` : ''}`;
+      ${'' /* history */}${past.length ? `<div class="card"><h3>Previous exams</h3><table class="simple">${past.map(e => `<tr><td>${new Date(e.date).toLocaleDateString()}</td><td>${e.correct}/${e.scored}</td><td><b>${pct(e.pct)}</b></td><td>${e.minutes} min</td></tr>`).join('')}</table></div>` : ''}`;
     return;
   }
-  const counts = { A: 13, B: 18, C: 29, D: 13, E: 5, F: 52 }; const items = [];
-  for (const [ar, n] of Object.entries(counts)) items.push(...unseenFirst(Q().filter(q => q.area === ar)).slice(0, n * 3).sort(() => Math.random() - 0.5).slice(0, n));
-  const mixedItems = shuffle(items); const pre = new Set(sample([...mixedItems.keys()], 20));
-  startQuiz('Practice exam', mixedItems, { mode: 'exam', timeLimit: 120, pretest: pre });
+  const { items, pre } = buildExam();
+  startQuiz('Practice exam', items, { mode: 'exam', timeLimit: minutes, pretest: pre, pace: (minutes * 60) / 130 });
 }
 function flashcards(el, a, p) {
   if (p.deck) {
-    let cards = D.cards; if (p.deck === 'due') cards = S.dueCards(cards); else if (p.deck === 'images') cards = cards.filter(c => c.image); else if (AREAS[p.deck]) cards = cards.filter(c => c.area === p.deck);
+    let cards = D.cards; if (p.deck === 'due') cards = S.dueCards(cards); else if (p.deck === 'images') cards = cards.filter(c => c.image); else if (['anatomy', 'trap', 'communication'].includes(p.deck)) cards = cards.filter(c => c.tags?.includes(p.deck)); else if (AREAS[p.deck]) cards = cards.filter(c => c.area === p.deck);
     const pc = S.profile().c; const ordered = [...shuffle(cards.filter(c => !pc[c.id])), ...shuffle(cards.filter(c => pc[c.id]))];
     return P.cardSession(el, ordered.slice(0, +p.n || 25), 'Flashcards');
   }
@@ -171,6 +143,8 @@ function flashcards(el, a, p) {
   el.innerHTML = `<div class="card"><h2>Flashcards</h2><p class="muted">Tap a card to flip it, then mark <b>Got it</b> or <b>Missed it</b>. Missed cards return on the spaced-repetition schedule.</p>
     <ul class="list"><li><a href="#/flashcards?deck=all"><span class="grow"><b>All cards (mixed)</b><br><small class="muted">${D.cards.length} cards</small></span><span class="chev"></span></a></li>
     <li><a href="#/flashcards?deck=due"><span class="grow"><b>Due today</b><br><small class="muted">${due} cards</small></span><span class="chev"></span></a></li>
+    <li><a href="#/flashcards?deck=anatomy"><span class="grow"><b>🫀 Anatomy & blood flow</b><br><small class="muted">${D.cards.filter(c => c.tags?.includes('anatomy')).length} cards</small></span><span class="chev"></span></a></li>
+    <li><a href="#/flashcards?deck=trap"><span class="grow"><b>⚠️ Exam traps</b><br><small class="muted">${D.cards.filter(c => c.tags?.includes('trap')).length} cards</small></span><span class="chev"></span></a></li>
     <li><a href="#/flashcards?deck=images"><span class="grow"><b>Rhythm & 12-lead images</b><br><small class="muted">${D.cards.filter(c => c.image).length} cards</small></span><span class="chev"></span></a></li>
     ${Object.keys(AREAS).map(x => `<li><a href="#/flashcards?deck=${x}"><span class="grow"><b>${AREA_ICON[x]} ${esc(AREAS[x])}</b><br><small class="muted">${D.cards.filter(c => c.area === x).length} cards</small></span><span class="chev"></span></a></li>`).join('')}</ul></div>`;
 }
@@ -213,7 +187,7 @@ function weak(el) {
 // ---------- Settings & profiles ----------
 function settings(el) {
   const s = S.settings();
-  el.innerHTML = `<div class="grid tiles" style="margin-bottom:14px"><a class="tile" href="#/plan"><span class="ico">🗓️</span><b>Study plan</b></a><a class="tile" href="#/guide"><span class="ico">🧠</span><b>How to study</b></a><a class="tile" href="#/profiles"><span class="ico">👥</span><b>Profiles</b></a><a class="tile" href="#/weak"><span class="ico">📉</span><b>Weak spots</b></a><a class="tile" href="#/bookmarks"><span class="ico">★</span><b>Bookmarks</b></a><a class="tile" href="#/about"><span class="ico">ℹ️</span><b>About</b></a></div><div class="card"><h2>Settings</h2>
+  el.innerHTML = `<div class="grid tiles" style="margin-bottom:14px"><a class="tile" href="#/plansettings"><span class="ico">🗓️</span><b>Plan settings</b></a><a class="tile" href="#/help"><span class="ico">❓</span><b>Help</b></a><a class="tile" href="#/guide"><span class="ico">🧠</span><b>How to study</b></a><a class="tile" href="#/profiles"><span class="ico">👥</span><b>Profiles</b></a><a class="tile" href="#/weak"><span class="ico">📉</span><b>Weak spots</b></a><a class="tile" href="#/bookmarks"><span class="ico">★</span><b>Bookmarks</b></a><a class="tile" href="#/about"><span class="ico">ℹ️</span><b>About</b></a></div><div class="card"><h2>Settings</h2>
     <label class="field"><span>Exam date</span><input type="date" id="ed" value="${esc(s.examDate)}"></label>
     <label class="field"><span>Daily goal (questions + cards)</span><input type="number" id="goal" min="5" max="300" value="${s.goal}"></label>
     <div class="field"><span><b>Theme</b></span><div class="seg" id="theme">${['auto', 'light', 'dark'].map(t => `<button data-v="${t}" class="${s.theme === t ? 'on' : ''}">${t === 'auto' ? 'System' : t[0].toUpperCase() + t.slice(1)}</button>`).join('')}</div></div>
@@ -226,7 +200,7 @@ function settings(el) {
     <div class="card"><h3>Offline</h3><p id="offline" class="muted">Checking offline status…</p><button class="btn small" id="recache">Re-download for offline use</button></div>
     <div class="card"><h3>Share</h3><p>Send this link to a study partner — each phone keeps its own progress.</p><p><span class="kbd" id="link">${esc(location.origin + location.pathname)}</span></p><div class="btn-row"><button class="btn" id="share">Share link</button></div></div>
     <p class="disclaimer">Not an official CCI product. <a href="#/about">About, sources & image credits</a></p>`;
-  $('#ed', el).onchange = e => { S.setSetting('examDate', e.target.value); toast('Exam date saved'); };
+  $('#ed', el).onchange = e => { S.setSetting('examDate', e.target.value); if (PL.isSetUp() && e.target.value > PL.todayStr()) PL.recalc(); toast('Exam date saved; plan recalculated'); };
   $('#goal', el).onchange = e => { S.setSetting('goal', Math.max(5, +e.target.value || 30)); toast('Daily goal saved'); };
   $$('#theme button', el).forEach(b => b.onclick = () => { S.setSetting('theme', b.dataset.v); applyTheme(); settings(el); });
   $$('#size button', el).forEach(b => b.onclick = () => { S.setSetting('size', b.dataset.v); applyTheme(); settings(el); });
@@ -261,8 +235,10 @@ function profiles(el) {
 async function boot() {
   applyTheme();
   $('.profile-chip').onclick = () => (location.hash = '#/profiles');
+  $('.help-btn').onclick = () => (location.hash = '#/help');
   try { await loadData(); } catch (e) { main().innerHTML = `<div class="card"><h2>Could not load study data</h2><p>${esc(e.message)}</p><p>If you opened index.html directly from disk, serve the folder over http (see README) or use the GitHub Pages link.</p></div>`; return; }
   window.addEventListener('hashchange', route); route();
+  G.scheduleReminder(); PL.checkWeak();
   if ('serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('sw.js').catch(e => console.warn('SW registration failed', e));
 }
 boot();

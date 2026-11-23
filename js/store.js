@@ -12,7 +12,7 @@ const blankProfile = name => ({
   exams: [],    // {date, total, correct, scored, pct, byArea:{A:[c,n]}, minutes}
   days: {},     // 'YYYY-MM-DD' → items answered that day
   rapid: [],    // best rapid-fire scores
-  settings: { goal: 30, examDate: '2027-01-15', theme: 'auto', size: 'm', confidence: true },
+  settings: { goal: 30, examDate: '2027-01-15', theme: 'auto', size: 'm', confidence: true, examMinutes: 110, remindTime: '' },
 });
 
 let state = load();
@@ -28,7 +28,7 @@ export function save(now = false) {
 }
 window.addEventListener('pagehide', () => save(true));
 
-export const profile = () => state.profiles[state.active];
+export const profile = () => { const p = state.profiles[state.active]; p.settings = { examMinutes: 110, remindTime: '', ...p.settings }; return p; };
 export const profiles = () => Object.values(state.profiles);
 export function addProfile(name) { const p = blankProfile(name.trim() || 'Study buddy'); state.profiles[p.id] = p; state.active = p.id; save(true); return p; }
 export function switchProfile(id) { if (state.profiles[id]) { state.active = id; save(true); } }
@@ -44,6 +44,14 @@ export function setSetting(k, v) { profile().settings[k] = v; save(); }
 
 export const today = (d = new Date()) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 const bump = () => { const p = profile(), t = today(); p.days[t] = (p.days[t] || 0) + 1; };
+// Per-day study log (for the end-of-day recap and the calendar)
+export function dayLog(d = today()) { const p = profile(); p.log = p.log || {}; return p.log[d] || (p.log[d] = { n: 0, c: 0, ms: 0, areas: {}, subs: {}, missed: [], cards: [0, 0] }); }
+function logAnswer(q, ok, ms) {
+  const L = dayLog(); L.n++; if (ok) L.c++; L.ms += Math.min(ms || 0, 180000);
+  const a = L.areas[q.area] || (L.areas[q.area] = [0, 0]); a[1]++; if (ok) a[0]++;
+  const k = q.area + '|' + q.subtopic, s = L.subs[k] || (L.subs[k] = [0, 0]); s[1]++; if (ok) s[0]++;
+  if (!ok && !L.missed.includes(q.id)) L.missed.push(q.id);
+}
 
 // Spaced repetition shared by questions and flashcards.
 function schedule(rec, correct, conf) {
@@ -63,12 +71,13 @@ export function recordAnswer(q, correct, { conf = 'sure', ms = 0, scored = true 
   if (conf === 'guess') r.guessed = (r.guessed || 0) + 1;
   r.hist = [...(r.hist || []).slice(-9), correct ? 1 : 0];
   if (scored) schedule(r, correct, conf);
-  bump(); save();
+  logAnswer(q, correct, ms); bump(); save();
 }
 export function recordCard(card, gotIt) {
   const p = profile(); const r = p.c[card.id] || (p.c[card.id] = { seen: 0, correct: 0, wrong: 0 });
   r.seen++; gotIt ? r.correct++ : r.wrong++; r.last = Date.now();
   schedule(r, gotIt, 'sure'); if (!gotIt) r.queued = true;
+  const L = dayLog(); L.cards[1]++; if (gotIt) L.cards[0]++;
   bump(); save();
 }
 export const dueQuestions = (all, at = Date.now()) => all.filter(q => { const r = profile().q[q.id]; return r && r.queued && r.due <= endOfDay(at); });
@@ -128,4 +137,4 @@ export function importData(text) {
   else if (d.profile) { state.profiles[d.profile.id] = d.profile; state.active = d.profile.id; }
   save(true);
 }
-export function resetProgress() { const p = profile(); Object.assign(p, { q: {}, c: {}, bookmarks: [], exams: [], days: {}, rapid: [] }); save(true); }
+export function resetProgress() { const p = profile(); Object.assign(p, { q: {}, c: {}, bookmarks: [], exams: [], days: {}, rapid: [], log: {}, lessonsRead: {}, plan: undefined, seenIntro: false }); save(true); }
