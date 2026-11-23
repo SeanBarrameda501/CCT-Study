@@ -1,0 +1,8 @@
+// Writes ATTRIBUTION.md from images/real/real-images.json
+import fs from 'fs';
+const real = JSON.parse(fs.readFileSync('images/real/real-images.json', 'utf8'));
+let md = `# Image attribution\n\n## Real ECG recordings (\`images/real/\`) — labeled **REAL** in the app\n\nAll real images come from Wikimedia Commons. Each license was read from the file's Commons metadata (machine-readable \`LicenseShortName\`) and only CC0, public-domain, CC BY and CC BY-SA files were accepted. Images were resized/recompressed for the app; no other changes were made. Files under CC BY-SA remain under CC BY-SA.\n\n| File | Shows | Author | License | Source |\n|---|---|---|---|---|\n`;
+for (const r of real) md += `| \`${r.file}\` | ${r.caption} | ${r.author.replace(/\|/g, '/').replace(/\s+/g, ' ').trim()} | ${r.licenseUrl ? `[${r.license}](${r.licenseUrl})` : r.license} | [${r.title}](${r.source}) |\n`;
+md += `\nDiagnoses for real images are taken from the uploader's description on Commons (shown above) and were visually checked; they are not independently confirmed by a physician.\n\n## Generated ECG images (\`images/generated/\`) — labeled **GENERATED** in the app\n\nEvery file in \`images/generated/\` is a synthetic tracing created by this project's own code (\`js/ecg.js\`, built by \`tools/build-strips.mjs\`). They are not recordings of any person. Each one is automatically checked against textbook criteria (\`tools/criteria.mjs\`) before it is used. They are released with the rest of this project.\n\n## Other graphics\n\nThe lead-placement diagrams and icons are drawn by this project in SVG.\n`;
+fs.writeFileSync('ATTRIBUTION.md', md);
+console.log('ATTRIBUTION.md:', real.length, 'real images');
