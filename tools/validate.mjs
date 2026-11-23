@@ -89,6 +89,6 @@ console.log(`traps: ${Q.filter(q => q.tags?.includes('trap')).length} questions;
 console.log(`core questions ${Qcore.length} of ${Q.length} | ${Object.entries(qp).map(([k, v]) => `${k} ${v.toFixed(1)}%`).join(' ')} | meds ${medQ} (${((100 * medQ) / Q.length).toFixed(1)}%)`);
 console.log(`flashcards ${FC.length} | ${Object.entries(fp).map(([k, v]) => `${k} ${v.toFixed(1)}%`).join(' ')} | meds ${medF}`);
 console.log(`types`, Q.reduce((a, q) => ((a[q.type] = (a[q.type] || 0) + 1), a), {}), 'answer positions', pos, `images ${S.length}`);
-if (warns.length) console.log(`\n${warns.length} warnings:\n  ` + warns.filter(w => !process.env.ONLY || w.includes(process.env.ONLY)).filter(w=>!process.env.SKIP || !w.includes(process.env.SKIP)).slice(0, 200).join('\n  ') + (warns.length > 60 ? `\n  …${warns.length - 60} more` : ''));
+if (warns.length) console.log(`\n${warns.length} warnings:\n  ` + warns.filter(w => !process.env.ONLY || w.includes(process.env.ONLY)).filter(w=>!process.env.SKIP || !w.includes(process.env.SKIP)).join('\n  ') + "");
 if (errors.length) { console.log(`\n${errors.length} ERRORS:\n  ` + errors.slice(0, 80).join('\n  ')); process.exit(1); }
 console.log('\nAll checks passed.');
