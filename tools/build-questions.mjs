@@ -11,6 +11,7 @@ import D from './content/d-stress.mjs';
 import E from './content/e-ambulatory.mjs';
 import F from './content/f-rhythm.mjs';
 import EXTRA from './content/extra.mjs';
+import EXPLAIN from './content/explain-extra.mjs';
 
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
 const strips = JSON.parse(fs.readFileSync(path.join(ROOT, 'data/strips.json'), 'utf8')).images;
@@ -89,10 +90,10 @@ const CONF = {
   junctional: ['idio', 'sbrady', 'accjunct', 'avb3'], accjunct: ['junctional', 'jtach', 'nsr', 'aivr'], jtach: ['svt', 'accjunct', 'stach', 'vtach'], pjc: ['pac', 'pvc', 'sinarr', 'junctional'],
   pvc: ['pac', 'pjc', 'bigeminy', 'multifocal'], bigeminy: ['trigeminy', 'pvc', 'couplet', 'avb21'], trigeminy: ['bigeminy', 'couplet', 'pvc', 'pac'], couplet: ['vtach', 'bigeminy', 'multifocal', 'trigeminy'],
   multifocal: ['pvc', 'couplet', 'bigeminy', 'vtach'], vtach: ['svt', 'vfib', 'torsades', 'aivr'], torsades: ['vfib', 'vtach', 'art_loose', 'aflutter'],
-  vfib: ['vtach', 'torsades', 'asystole', 'art_tremor'], vfibfine: ['asystole', 'vfib', 'afib', 'art_loose'], asystole: ['vfibfine', 'idio', 'avb3', 'art_loose'],
+  vfib: ['vtach', 'torsades', 'asystole', 'art_tremor'], vfibfine: ['asystole', 'art_loose', 'afib', 'art_wander'], asystole: ['vfibfine', 'idio', 'avb3', 'art_loose'],
   idio: ['junctional', 'aivr', 'avb3', 'vtach'], aivr: ['vtach', 'idio', 'accjunct', 'vpace'],
   avb1: ['nsr', 'mobitz1', 'sbrady', 'avb3'], mobitz1: ['mobitz2', 'avb3', 'avb1', 'sarrest'], mobitz2: ['mobitz1', 'avb3', 'avb21', 'sarrest'],
-  avb21: ['mobitz2', 'avb3', 'mobitz1', 'sbrady'], avb3: ['mobitz1', 'mobitz2', 'avb21', 'idio'],
+  avb21: ['avb3', 'sbrady', 'avb1', 'junctional'], avb3: ['mobitz1', 'mobitz2', 'avb21', 'idio'],
   rbbb: ['lbbb', 'nsr', 'vtach', 'avb1'], lbbb: ['rbbb', 'nsr', 'vpace', 'idio'],
   apace: ['vpace', 'avpace', 'nsr', 'failsense'], vpace: ['avpace', 'apace', 'idio', 'failcapture'], avpace: ['vpace', 'apace', 'failsense', 'lbbb'],
   failcapture: ['failsense', 'vpace', 'mobitz2', 'sarrest'], failsense: ['failcapture', 'avpace', 'pvc', 'vpace'],
@@ -136,11 +137,12 @@ const ID_STEMS = [
 const LIFE = { vfib: 1, vfibfine: 1, vtach: 1, torsades: 1, asystole: 1 };
 
 function idQuestion(s, k, area = 'F', sub = FAMILY[s.rhythm]) {
-  const opts = [NAME(s.rhythm), ...shuffle(CONF[s.rhythm]).slice(0, 3).map(NAME)];
+  const wrongIds = shuffle(CONF[s.rhythm]).slice(0, 3);
+  const opts = [NAME(s.rhythm), ...wrongIds.map(NAME)];
   const isArt = s.rhythm.startsWith('art_');
   G({ area, subtopic: sub, difficulty: ['nsr', 'sbrady', 'stach', 'vfib', 'asystole', 'afib'].includes(s.rhythm) ? 1 : ['mobitz2', 'avb21', 'mat', 'wap', 'aivr', 'failsense', 'vfibfine', 'jtach'].includes(s.rhythm) ? 3 : 2,
     type: 'mcq', stem: (isArt ? 'What is causing the disturbance on this lead II strip?' : ID_STEMS[k % ID_STEMS.length]).replace('{L}', s.lead), image: s.id, options: opts, answer: 0,
-    explanation: `${CRIT[s.rhythm]} On this ${imgNote(s)}: ${describe(s)}.`, source: SRC.DUBIN + '; generated strip verified by tools/criteria.mjs', rhythm: s.rhythm });
+    explanation: `${CRIT[s.rhythm]} On this ${imgNote(s)}: ${describe(s)}. Why not ${NAME(wrongIds[0]).toLowerCase()}? ${CRIT[wrongIds[0]]}`, source: SRC.DUBIN + '; generated strip verified by tools/criteria.mjs', rhythm: s.rhythm });
 }
 function rateQuestion(s) {
   const irr = irregularIds.has(s.rhythm); const c = irr ? s.measured.qrsIn6s * 10 : s.measured.vrate;
@@ -283,22 +285,23 @@ const t12Expl = {
   normal: 'Sinus rhythm, normal axis (lead I and aVF positive), narrow QRS, normal R-wave progression and no ST elevation or depression.',
   lad: 'Lead I is positive and leads II/aVF are negative, placing the axis beyond −30° (left axis deviation).',
   rad: 'Lead I is negative and aVF is positive: the axis is between +90° and +180° (right axis deviation).',
-  rbbb: 'QRS ≥ 0.12 s with a terminal R\' in V1 and wide terminal S waves in I and V6.',
+  rbbb: 'QRS ≥ 0.12 s with a terminal R\' in V1 and wide terminal S waves in I and V6; the T waves in V1–V2 are often inverted (secondary change).',
   lbbb: 'QRS ≥ 0.12 s, deep QS/rS in V1–V2, broad R waves without septal q in I, aVL, V5–V6, with discordant ST-T changes.',
   lvh: 'Very tall voltages (S V1 + R V5/V6 ≥ 35 mm) with lateral ST depression/T inversion (strain).',
   posterior: 'ST depression with tall R waves in V1–V3 is the mirror image of posterior injury; confirm with V7–V9.',
   ischemia: 'Horizontal ST depression in the inferior (II, III, aVF) and lateral (V4–V6) leads without ST elevation indicates ischemia (subendocardial).',
   hyperk: 'Tall, narrow, peaked T waves, most obvious in the precordial leads, are an early sign of hyperkalemia.',
   dextro: 'Lead I shows inverted P, QRS and T with aVR upright, and R waves get smaller from V1 to V6 instead of larger.',
-  afib12: 'No P waves and an irregularly irregular rhythm in the lead II rhythm strip.',
-  paced12: 'Pacing spikes precede wide QRS complexes in every beat.',
-  stach12: 'Sinus P waves before each QRS at a rate above 100.',
-  avb1_12: 'Sinus rhythm with a constant PR interval longer than 0.20 s.',
+  afib12: 'No P waves and an irregularly irregular rhythm in the lead II rhythm strip, with a fibrillatory baseline and narrow QRS complexes.',
+  paced12: 'Pacing spikes precede wide QRS complexes in every beat; the paced QRS looks LBBB-like with a superior axis because pacing starts at the right ventricular apex.',
+  stach12: 'Upright sinus P waves precede each narrow QRS at a regular rate above 100, with normal PR.',
+  avb1_12: 'Sinus rhythm with a constant PR interval longer than 0.20 s and every P wave conducted.',
   rev_lara: 'Lead I is inverted (negative P, QRS and T) and aVR is upright—classic LA/RA reversal. Leads II and III and aVR/aVL are swapped.',
   rev_lall: 'LA/LL reversal swaps I with II and aVL with aVF and inverts III; it can look nearly normal—the P wave in I larger than in II is a clue.',
   rev_rall: 'RA/LL reversal inverts leads I, II and III and aVF; aVR becomes upright and aVF inverted.',
   rev_v1v2: 'V1 and V2 are swapped, so R-wave progression is interrupted (V1 looks like V2 and vice versa).',
 };
+function whyNot12(k) { const i = TWELVE_INFO[k]; return i ? `That would show ST elevation in ${i.leads.join(', ')}.` : 'That pattern would show: ' + t12Expl[k].charAt(0).toLowerCase() + t12Expl[k].slice(1); }
 const leadOptions = ['I', 'II', 'III', 'aVR', 'aVL', 'aVF', 'V1', 'V2', 'V3', 'V4', 'V5', 'V6'];
 for (const s of twelve) {
   const c = s.condition; const info = TWELVE_INFO[c]; const st = s.measured.st;
@@ -307,7 +310,7 @@ for (const s of twelve) {
   const area = isRev ? 'B' : 'C', sub = isRev ? 'Troubleshooting' : info ? 'Ischemia & infarction' : ['lad', 'rad'].includes(c) ? 'Axis' : ['rbbb', 'lbbb'].includes(c) ? 'Bundle branch block' : c === 'lvh' ? 'Hypertrophy' : 'Ischemia & infarction';
   // 1. identify
   G({ area, subtopic: sub, difficulty: 2, type: 'mcq', image: s.id, stem: isRev ? 'This 12-lead was just recorded on a patient whose prior ECG was normal. What best explains the appearance?' : 'What is the best interpretation of this 12-lead ECG?',
-    options: [t12Name[c], ...t12Conf[c].map(k => t12Name[k])], answer: 0, explanation: (info ? `ST elevation in ${info.leads.join(', ')} indicates ${info.wall.toLowerCase()} wall injury, usually from the ${info.artery}. ${stText}` : t12Expl[c]) + (isRev ? ' Correct the electrode placement and repeat the ECG.' : ''),
+    options: [t12Name[c], ...t12Conf[c].map(k => t12Name[k])], answer: 0, explanation: (info ? `ST elevation in ${info.leads.join(', ')} indicates ${info.wall.toLowerCase()} wall injury, usually from the ${info.artery}. ${stText}` : t12Expl[c]) + (isRev ? ' Correct the electrode placement and repeat the ECG.' : '') + ` Why not ${t12Name[t12Conf[c][0]].toLowerCase()}? ${whyNot12(t12Conf[c][0])}`,
     source: info ? SRC.UDMI : isRev ? SRC.AHA_STD : c === 'lvh' ? SRC.AHA_LVH : ['rbbb', 'lbbb'].includes(c) ? SRC.AHA_BBB : SRC.MARRIOTT });
   if (info) {
     G({ area: 'C', subtopic: 'Ischemia & infarction', difficulty: 2, type: 'mcq', image: s.id, stem: 'Which coronary artery is most likely occluded in this patient with chest pain?',
@@ -372,13 +375,13 @@ for (const [boxes, speed] of [[5, 25], [3, 25], [4, 25], [7, 25], [2, 25], [10, 
   const opts = [sec, sec * 2, sec / 2, boxes * 0.2].map(x => `${x.toFixed(2)} s`).filter((v, i, a) => a.indexOf(v) === i);
   if (opts.length < 4) opts.push(`${(sec + 0.1).toFixed(2)} s`);
   G({ area: 'B', subtopic: 'Calibration & paper', difficulty: 2, type: 'mcq', tags: ['calculation'], stem: `At a paper speed of ${speed} mm/s, an interval spans ${boxes} small boxes. How long is it?`, options: opts.slice(0, 4), answer: 0,
-    explanation: `At ${speed} mm/s each 1-mm box = ${speed === 25 ? '0.04' : '0.02'} s, so ${boxes} × ${speed === 25 ? '0.04' : '0.02'} = ${sec.toFixed(2)} s.`, source: SRC.AHA_STD });
+    explanation: `At ${speed} mm/s each 1-mm box = ${speed === 25 ? '0.04' : '0.02'} s, so ${boxes} × ${speed === 25 ? '0.04' : '0.02'} = ${sec.toFixed(2)} s. A common error is using ${speed === 25 ? '0.02 s (the 50 mm/s value)' : '0.04 s (the 25 mm/s value)'} per box or counting large boxes (0.20 s each).`, source: SRC.AHA_STD });
 }
 for (const [mm, cal] of [[15, 10], [8, 5], [30, 20], [12, 10], [6, 5], [22, 10]]) {
   const mv = mm / cal; const opts = [mv, mm / 10 === mv ? mv * 2 : mm / 10, mv / 2, mv * 2].map(x => `${+x.toFixed(2)} mV`).filter((v, i, a) => a.indexOf(v) === i);
   while (opts.length < 4) opts.push(`${+(mv + opts.length * 0.3).toFixed(2)} mV`);
   G({ area: 'B', subtopic: 'Calibration & paper', difficulty: 3, type: 'mcq', tags: ['calculation'], stem: `The calibration is set at ${cal} mm/mV. An R wave is ${mm} mm tall. What is its true amplitude?`, options: opts.slice(0, 4), answer: 0,
-    explanation: `Amplitude = height ÷ calibration = ${mm} mm ÷ ${cal} mm/mV = ${+mv.toFixed(2)} mV.${cal !== 10 ? ' Always check the calibration mark before judging voltage.' : ''}`, source: SRC.AHA_STD });
+    explanation: `Amplitude = height ÷ calibration = ${mm} mm ÷ ${cal} mm/mV = ${+mv.toFixed(2)} mV. ${cal !== 10 ? 'Assuming the standard 10 mm/mV here would give the wrong value, so always check the calibration mark.' : 'At standard calibration every 10 mm (two large boxes) equals 1 mV.'}`, source: SRC.AHA_STD });
 }
 for (const [qt, rr] of [[0.36, 0.64], [0.40, 1.0], [0.44, 0.81], [0.32, 0.49], [0.48, 0.81], [0.38, 0.64]]) {
   const qtc = qt / Math.sqrt(rr); const c = Math.round(qtc * 100) / 100;
@@ -390,6 +393,21 @@ for (const [qt, rr] of [[0.36, 0.64], [0.40, 1.0], [0.44, 0.81], [0.32, 0.49], [
 
 // ---------------- Assemble, shuffle options, IDs ----------------
 const hand = [...A, ...B, ...C, ...D, ...E, ...F, ...EXTRA];
+for (const q of hand) for (const [k, v] of Object.entries(EXPLAIN)) if (q.stem.startsWith(k)) { q.explanation += ' ' + v; break; }
+// Attach a reference strip to hand-written rhythm, interval and artifact questions whose STEM names the finding.
+const REF = [[/first-degree|PR interval of 0\.28/i, 'avb1'], [/Mobitz II/i, 'mobitz2'], [/Wenckebach|Mobitz I\b/i, 'mobitz1'], [/torsades/i, 'torsades'], [/asystole/i, 'asystole'],
+  [/ventricular fibrillation/i, 'vfib'], [/sustained VT|VT on a monitor/i, 'vtach'], [/inverted P wave before a narrow QRS/i, 'junctional'], [/tremor|somatic|muscle artifact|shivering|anxious and tense/i, 'art_tremor'],
+  [/60-cycle|60 Hz|fuzzy|thick-looking/i, 'art_60hz'], [/wandering baseline|drifting/i, 'art_wander'], [/flat line|loose|disconnected/i, 'art_loose'], [/Pacing spikes appear without/i, 'failcapture'],
+  [/Pacing spikes occur on or right after/i, 'failsense'], [/pacing spike followed by a wide QRS/i, 'vpace'], [/QT interval|U wave|PR interval|QRS duration|ST segment|P wave represents|ventricular depolarization only/i, 'nsr'],
+  [/300 method|1,500 method|R–R interval measures/i, 'nsr'], [/irregular rhythm such as atrial fibrillation/i, 'afib'], [/6-second strip/i, 'sinarr'], [/distinguishes artifact/i, 'art_tremor']];
+const refUse = {};
+for (const q of hand) {
+  if (q.image || !['F', 'B'].includes(q.area)) continue;
+  if (q.area === 'B' && q.subtopic !== 'Troubleshooting') continue;
+  const hit = REF.find(([re]) => re.test(q.stem)); if (!hit) continue;
+  const list = byRhythm[hit[1]]; const k = (refUse[hit[1]] = (refUse[hit[1]] || 0) + 1);
+  q.image = list[(k * 3) % list.length].id; q.tags = [...(q.tags || []), 'reference-strip'];
+}
 const all = [...hand, ...gen].map(q => ({ ...q }));
 const counters = {};
 const out = [];
