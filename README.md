@@ -11,11 +11,16 @@ A free, offline, mobile-friendly study app for the **Cardiovascular Credentialin
 
 | | |
 |---|---|
-| **1,130 questions** | Spread in the official CCI proportions: Pre-Procedural 10%, Resting ECG 14%, 12-Lead Analysis 22%, Stress 10%, Ambulatory 4%, Rhythm Analysis 40%. Every question has an explanation and a source. |
+| **1,360 questions** | 1,287 core questions in the official CCI proportions (Pre-Procedural 10.9%, Resting ECG 13.8%, 12-Lead Analysis 21.8%, Stress 9.9%, Ambulatory 4.0%, Rhythm Analysis 39.6%), plus a **73-question anatomy & blood-flow bonus set** (see below). Every question has an explanation and a source. |
 | **Item types like the real exam** | Multiple choice, select-all-that-apply, ordering, and hot spot (tap the PVC, the dropped P wave, or the lead with ST elevation). |
 | **466 ECG images** | 16 **REAL** licensed recordings and 450 **GENERATED** tracings (387 rhythm strips and 63 full 12-leads), each labeled. |
-| **523 flashcards, 49 mini-lessons, 223 glossary terms** | Lessons appear after every wrong answer and in the Library. |
-| **Study tools** | Spaced repetition, a timed 130-question exam, rhythm trainer, calculation practice, rapid fire, weak spots, an 8-week plan, mnemonics, medication reference, printable cheat sheets and lead-placement diagrams. |
+| **673 flashcards, 58 mini-lessons, 223 glossary terms** | Lessons appear after every wrong answer and in the Learn tab. |
+| **A plan that tells you what to do** | Today's plan with self-checking tasks, a day-by-day calendar to exam day, catch-up and re-plan, rest days, reminders. |
+
+### Extra weight on anatomy and blood flow
+A recent test-taker reported that cardiac anatomy and blood flow were heavily tested. CCI does not list A&P as its own domain, so the core bank keeps CCI's percentages, and a bonus set is added **on top**:
+73 extra questions, 50 extra flashcards and 6 extra lessons on chambers, valves, great vessels, coronary circulation, the conduction system, the cardiac cycle and the full path of blood.
+A&P now makes up **104 of 1,360 questions (7.6%)**, compared with 31 (about 2%) in the CCI-proportioned core. The practice exam still draws only from the core bank in CCI proportions.
 
 Where the official figures came from: [`docs/exam-outline.md`](docs/exam-outline.md).
 Facts worth double-checking: [`docs/unverified-facts.md`](docs/unverified-facts.md).
@@ -23,36 +28,49 @@ Image credits: [`ATTRIBUTION.md`](ATTRIBUTION.md).
 
 ## Turning on GitHub Pages (one time)
 
-1. Merge this work into `main`: on GitHub, open a pull request from `claude/intelligent-gauss-trv3fp` into `main` and merge it.
+1. On GitHub, open a pull request from the branch `claude/relaxed-heisenberg-ebxj52` into `main` and merge it.
 2. In the repository, open **Settings → Pages**.
 3. Under **Build and deployment**, set **Source** to **Deploy from a branch**.
 4. Set **Branch** to `main` and the folder to **/ (root)**, then click **Save**.
-5. Wait 1–2 minutes and refresh the Pages screen. It will show the live link: **https://seanbarrameda501.github.io/CCT-Study/**
+5. Wait 1–2 minutes and refresh the Pages screen. It shows the live link: **https://seanbarrameda501.github.io/CCT-Study/**
 
-If you want to try it before merging, you can choose the `claude/intelligent-gauss-trv3fp` branch in step 4 instead.
-The repository must be public for GitHub Pages on a free account.
+To try it before merging, pick the `claude/relaxed-heisenberg-ebxj52` branch in step 4 instead.
+On a free GitHub account the repository must be **public** for Pages to work.
+No build step is needed: the repository root is the site (`.nojekyll` is included).
 
 ## Installing it on your phone
 
 1. Open the link in **Safari** on iPhone or **Chrome** on Android.
 2. **iPhone:** tap **Share**, then **Add to Home Screen**. **Android:** tap the **⋮** menu, then **Install app** (or **Add to Home screen**).
-3. Open the app once while online and leave it open for about a minute. It downloads all questions and images (about 12 MB) for offline use. You can check this under **More → Offline**.
+3. Open the app once while online and leave it open for about a minute. It downloads all questions and images (about 12 MB) for offline use. You can check this under **Progress → App settings → Offline**.
 
 After that it works with no internet connection.
 
 ## Using it
 
-- **Profiles.** Tap the 👤 chip at the top right. Each person gets their own progress on a shared phone. Progress lives only on that device.
-- **Home.** Shows the readiness meter (estimated chance of passing, plus a countdown to your exam date), streak and daily goal, items due today, and accuracy for each content area. Tap an area to drill it.
-- **Study tab.** Quick quiz (10–20), interleaved practice, smart review, topic drill, full practice exam, rhythm trainer, calculations, patient scenarios, rapid fire, flashcards, weak spots, bookmarks and search.
-- **Confidence buttons.** After choosing an answer, tap **Sure**, **Unsure** or **Guess** to submit it. Right-but-unsure answers come back for review tomorrow.
-- **Spaced repetition.** A missed item returns after 1 day, then 3 days, then 1 week, then 2 weeks. After 4 correct answers in a row it leaves the queue. Flashcards use the same schedule. **Review** shows what is due today.
-- **Practice exam.** 130 questions in 2 hours, drawn in the CCI proportions. 20 items are unscored, as on the real exam. You get no feedback until the end, then a pass estimate and a breakdown by area.
-- **Library.** Lessons, lead-placement diagrams, glossary (search and drill), memory aids, medication reference, an ECG image gallery, and printable cheat sheets (open one, then Print or Save as PDF).
-- **More → Settings.** Exam date, daily goal, dark mode, text size, confidence prompts, and export/import of progress (use this to back up or move to a new phone). There is also a Share button for the link.
+**First launch.** A short walkthrough explains the app and asks for your name, exam date, start date and hours per day. It then builds a day-by-day plan through exam day. You can replay it any time with the **?** button.
+
+**Two people, one phone.** Tap the 👤 chip to add a profile. Each profile has its own progress and its own plan. On separate phones, just share the link.
+
+**The five tabs**
+- **📅 Today** opens with **Today's plan**. Overdue tasks come first, then today's tasks in order, each with a checkbox. Tap a task to start it; it checks itself off when you finish. The next step is marked **Start here**. A progress bar shows the current week. When everything is done you'll see **Done for today**, which means you can stop. Below that are tomorrow's tasks, the readiness meter with an exam countdown, and accuracy for each content area.
+- **📘 Learn:** lessons, anatomy & blood flow, patient care & communication, lead placement, exam traps, memory aids, medications, glossary, printable cheat sheets, ECG gallery, and the study guide.
+- **✏️ Practice:** quick quiz, topic drill, interleaved practice, smart review, the 130-question timed exam with a pacing coach, a 30-question pacing drill, rhythm trainer, calculations, patient scenarios, exam-traps quiz, rapid fire, search and bookmarks. Each mode says when to use it.
+- **🔁 Review:** what's due today (spaced repetition at 1, 3, 7 and 14 days), flashcards, weak spots, final-week mode, the end-of-day recap, and glossary drill.
+- **📊 Progress:** readiness, the study calendar, practice exam history, plan settings and reminder, app settings (dark mode, text size, daily goal, confidence buttons, export/import), profiles and Help.
+
+**The plan.** Weeks 1–3 cover each content area, starting with anatomy. Weeks 4–6 are daily mixed quizzes and spaced review, with a pacing drill each week. Week 7 has full timed practice exams. The last week is light review of weak spots, plus the exam-day checklist.
+- **Calendar.** Swipe or tap to move between days, and start a future day's tasks early. They count toward that day. The month view marks each day as done, partly done, missed, upcoming or rest.
+- **Falling behind.** If you fall behind, Today shows a **Behind schedule** banner with two options. **Catch up now** lists the missed tasks, with the important ones starred. **Re-plan** spreads the remaining lessons evenly over the days left. Missed work is never deleted silently.
+- **Weak topics.** If a topic drops below 60% (after 8 or more attempts), the plan adds extra review for it over the next two study days.
+- **Your schedule.** Mark rest days or change hours per day in **Plan settings**, and the plan recalculates from today.
+
+**Reminders.** Set a time in Plan settings. If you allow notifications, the app sends one while it is open or in the background. For a reminder that always works, tap **Add daily reminder to my calendar** to download a repeating calendar event. Today also shows a banner if you open the app after your reminder time.
+
+**Practice exam.** 130 questions are drawn in CCI proportions, and 20 are treated as unscored pretest items. The clock defaults to 1 h 50 min, the real question time; 2 h is optional. A pacing coach shows whether you are on pace or behind. You can flag questions, and before you submit, a review screen lists flagged and unanswered items. At the end you get a pass estimate (≥ 70% correct) and a breakdown by area. CCI's real cut score is a scaled 650/900, so the estimate is only a guide.
 
 ### Sharing with a study partner
-Send them the link. Each phone keeps its own progress. To move progress between phones, use **Export** on one and **Import** on the other.
+Send them the link (Progress → Share the app link). Each phone keeps its own progress. To move progress between phones, use **Export** on one and **Import** on the other.
 
 ## Adding or editing questions
 
@@ -74,6 +92,13 @@ Content is written in small JavaScript files and then compiled into the JSON fil
 3. Commit and push. GitHub Pages updates automatically, and phones pick up the new version the next time they open the app while online.
 
 Flashcards live in `tools/content/flashcards.mjs` (format `area|topic|front|back`), lessons in `tools/content/lessons.mjs`, and glossary terms in `tools/content/glossary.mjs`.
+Other content files:
+- `anatomy.mjs`: the anatomy bonus questions, lessons and cards. Items tagged `anatomy-bonus` don't count toward the area percentages.
+- `communication.mjs`: patient care and communication.
+- `traps-q.mjs` and `traps-list.mjs`: exam-trap questions and the mistakes list.
+- `distractor-fixes*.mjs`: wrong answers rewritten during the self-review so they're about as long as the correct answer.
+
+If the validator warns that "the correct answer is much longer than distractors", make the wrong answers just as specific.
 
 ### Running it on a computer
 The app must be served over http (not opened as a file):
@@ -88,7 +113,7 @@ Then open http://localhost:8000.
 
 ## Project layout
 ```
-index.html, css/, js/        the app (app.js, quiz.js, pages.js, store.js, ui.js, data.js, ecg.js)
+index.html, css/, js/        the app (app.js router, guide.js Today/plan/hubs, planner.js calendar, quiz.js, pages.js, store.js, ui.js, data.js, ecg.js)
 sw.js, manifest.webmanifest  offline support and install metadata
 data/                        questions, flashcards, lessons, glossary, medications, image metadata
 images/real, images/generated
