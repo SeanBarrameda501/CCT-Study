@@ -12,7 +12,7 @@ const OUT = path.join(ROOT, 'images/generated');
 fs.mkdirSync(OUT, { recursive: true });
 for (const f of fs.readdirSync(OUT)) if (f.endsWith('.svg')) fs.unlinkSync(path.join(OUT, f));
 
-const VARIANTS = 8;
+const VARIANTS = 9;
 const strips = [];
 const failures = [];
 const r2 = x => Math.round(x * 100) / 100;
@@ -23,10 +23,10 @@ for (const id of Object.keys(RHYTHMS)) {
   let made = 0;
   for (let seed = 1; made < VARIANTS && seed < 60; seed++) {
     const opts = { seed: seed * 97 + id.length };
-    if (id === 'aflutter') opts.ratio = [2, 3, 4, 4, 2, 4, 3, 4][made];
+    if (id === 'aflutter') opts.ratio = [2, 3, 4, 4, 2, 4, 3, 4, 2, 3][made];
     if (id === 'asystole' && made === VARIANTS - 1) opts.pWaves = true;
     if (id === 'junctional' || id === 'accjunct' || id === 'jtach') opts.pPos = ['before', 'none', 'after'][made % 3];
-    if (id === 'mobitz1') opts.cycle = [3, 4, 4, 3, 5, 4, 3, 4][made];
+    if (id === 'mobitz1') opts.cycle = [3, 4, 4, 3, 5, 4, 3, 4, 5, 3][made];
     if (id === 'avb3') opts.vrate = made % 2 ? 32 + made : 42 + made;
     const rh = buildRhythm(id, opts);
     const lead = leadFor(id);
@@ -41,7 +41,7 @@ for (const id of Object.keys(RHYTHMS)) {
     fs.writeFileSync(path.join(OUT, sid + '.svg'), st.svg);
     const toX = t => r2(st.x0 + t * 25);
     strips.push({
-      id: sid, file: `images/generated/${sid}.svg`, kind: 'strip', real: false, rhythm: id, name: RHYTHMS[id].name, lead,
+      id: sid, file: `images/generated/${sid}.svg`, kind: 'strip', real: false, rhythm: id, name: rh.meta.name, lead,
       width: r2(st.width), height: r2(st.height), x0: st.x0, y0: st.y0,
       meta: Object.fromEntries(Object.entries(rh.meta).filter(([k]) => !['id', 'name', 'spikes'].includes(k))),
       measured: {
@@ -51,6 +51,10 @@ for (const id of Object.keys(RHYTHMS)) {
         qrs: m.qrs.length ? r2(Math.max(...m.qrs)) : null,
         qt: m.qt.length ? r2(m.qt[0]) : null,
         qrsIn6s: m.qrsCount6,
+        ...(() => { const bs = clean.ann.beats.filter(b => b.qrsOn != null && b.qrsOn >= 0 && b.qrsOn <= rh.D);
+          return { pBeforeEach: bs.length > 0 && bs.every(b => b.p && b.pr != null), moreP: m.pCount > m.qrsCount + 1, noP: m.pCount === 0,
+            prConst: m.pr.length > 1 && Math.max(...m.pr) - Math.min(...m.pr) < 0.01, prLong: m.pr.length > 0 && m.pr.every(p => p > 0.2),
+            wideAll: bs.length > 0 && bs.every(b => b.qrsOff - b.qrsOn >= 0.12), wideAny: bs.some(b => b.qrsOff - b.qrsOn >= 0.12) }; })(),
       },
       // beat geometry in SVG units (mm) for hot-spots and caliper hints
       beats: syn.ann.beats.filter(b => (b.qrsOn ?? b.p?.on ?? b.spikeV ?? -1) >= 0 && (b.qrsOn ?? b.p?.on ?? b.spikeV) < rh.D).map(b => ({
@@ -91,7 +95,7 @@ const T12 = {
   stach12: { name: 'Sinus tachycardia (12-lead)', rhythm: 'stach', mods: {} },
   avb1_12: { name: 'First-degree AV block (12-lead)', rhythm: 'avb1', mods: {} },
 };
-const COUNT12 = { normal: 3, lad: 2, rad: 2, rbbb: 2, lbbb: 2, lvh: 2, inferior: 3, anterior: 3, septal: 2, lateral: 2, anterolateral: 2, posterior: 1, ischemia: 2, hyperk: 1, rev_lara: 2, rev_lall: 1, rev_rall: 1, rev_v1v2: 1, dextro: 1, afib12: 1, paced12: 1, stach12: 1, avb1_12: 1 };
+const COUNT12 = { normal: 3, lad: 4, rad: 4, rbbb: 4, lbbb: 4, lvh: 3, inferior: 5, anterior: 5, septal: 3, lateral: 4, anterolateral: 3, posterior: 2, ischemia: 3, hyperk: 2, rev_lara: 3, rev_lall: 2, rev_rall: 2, rev_v1v2: 2, dextro: 1, afib12: 1, paced12: 1, stach12: 1, avb1_12: 1 };
 for (const [key, def] of Object.entries(T12)) {
   let made = 0;
   for (let seed = 1; made < COUNT12[key] && seed < 40; seed++) {
